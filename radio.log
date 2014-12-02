@@ -1,0 +1,36 @@
+INFO:root:RadioWebServer> WWW service running at 192.168.0.12:80
+DEBUG:root:main()> Startup Ok
+DEBUG:root:main()> DialLed fade in.
+DEBUG:root:main()> PowerLed flicker on.
+DEBUG:root:[127.875, 383.625, 639.375, 895.125]
+DEBUG:root:[['itunes', True, False], ['oldmusic', True, False], ['wjsv', False, <function wjsv_queue at 0xb68dffb0>], ['jazzfm', False, False]]
+DEBUG:root:main()> Waiting for dial led to finish...
+DEBUG:mpd:Calling MPD status()
+INFO:mpd:Calling MPD connect('localhost', 6600, timeout=None)
+DEBUG:mpd:Calling MPD status()
+DEBUG:root:main()> Main loop.
+INFO:root:RadioObjectCollection> Load wjsv
+INFO:root:RadioObjectCollection> Playing 0
+DEBUG:mpd:Calling MPD status()
+DEBUG:mpd:Calling MPD clear()
+DEBUG:mpd:Calling MPD load('wjsv',)
+DEBUG:mpd:Calling MPD random(0,)
+DEBUG:mpd:Calling MPD play(6,)
+DEBUG:mpd:Calling MPD seekcur(3180,)
+DEBUG:mpd:Calling MPD currentsong()
+DEBUG:root:main()> Ctrl-C. Quitting.
+DEBUG:root:RadioObjectCollection> Cleaning up...
+DEBUG:root:RadioObjectCollection> Stop leds.
+DEBUG:root:RadioObjectCollection> Stop MPD client
+DEBUG:mpd:Calling MPD status()
+DEBUG:mpd:Calling MPD stop()
+DEBUG:mpd:Calling MPD close()
+INFO:mpd:Calling MPD disconnect()
+DEBUG:root:RadioObjectCollection> Stop Web Server
+DEBUG:root:RadioWebServer> Shutting down server
+DEBUG:root:RadioWebServer> Joining thread....
+DEBUG:root:RadioWebServer> ...thread done.
+DEBUG:root:RadioObjectCollection> GPIO cleanup
+DEBUG:root:RadioObjectCollection> All cleanup done.
+DEBUG:root:main()> Shutdown complete.
+DEBUG:root:main()> Finished. Return 0
