@@ -28,7 +28,8 @@ try:
 	from radio_config import *
 	from radio_hw import *
 	from radio_www import *
-	from led_config import LED_HOST, LED_PORT, LED_AUTH_KEY
+#	from led_config import LED_HOST, LED_PORT, LED_AUTH_KEY
+	from led import led_config
 
 except RuntimeError as e:
 	logging.critical("Error loading an import: " + str(e))
