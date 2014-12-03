@@ -78,7 +78,7 @@ class Process:
 
 
 def main():
-	led_control = Process('led.py')
+	led_control = Process('led_service.py')
 	led_control.start()
 	if not led_control.is_running():
 		logging.critical("Cannot start LED service. Aborting...")
