@@ -23,15 +23,16 @@ try:
 
 	import mpd
 
+	from multiprocessing.connection import Client
+
 	from radio_config import *
 	from radio_hw import *
 	from radio_www import *
-	from radio_indexhtml import *
+	from led_config import LED_HOST, LED_PORT, LED_AUTH_KEY
 
 except RuntimeError as e:
 	logging.critical("Error loading an import: " + str(e))
 	sys.exit(0)
-
 
 if (os.getuid() != 0):
 	logging.critical("This process must be run as root. Exiting.")
@@ -47,7 +48,6 @@ except IOError as e:
 	logging.critical("Can't open log file for write: " + str(e))
 
 
-
 """
 RadioObjectCollection
 
@@ -58,18 +58,18 @@ class RadioObjectCollection:
 	Player = False		# instance of MPD client class
 	TunerKnob = False 	# instance of TunerPotReader class
 	VolumeKnob = False	# instance of VolumePotReader class
-	PowerLed = False	# } Led objects
-	DialLed = False		# }
 	DialView = False	# instance of DialView class
 	WebServer = False	# instance of RadioWebServer class
+	DialLedClient = None
+	PowerLedClient = None
 
 	def __init__(self):
 		signal.signal(signal.SIGTERM, self._signal_term_handler)
 
 		self.DialView = DialView()
 
-		self.DialLed = Led(LED_PIN_DIAL)
-		self.PowerLed = Led(LED_PIN_POWER)
+		self.DialLedClient = Client(LED_HOST, LED_PORT_DIAL, LED_AUTH_KEY)
+		self.PowerLedClient = Client(LED_HOST, LED_PORT_POWER, LED_AUTH_KEY)
 
 		self.VolumeKnob = VolumePotReader(VOL_POT_ADC)
 		self.VolumeKnob.smooth_fac = 0.9
@@ -157,7 +157,8 @@ class RadioObjectCollection:
 				self.VolumeKnob.volume_cap = vol_adj * self.VolumeKnob.volume
 				self.VolumeKnob.volumize(self.VolumeKnob.volume_cap)
 
-				self.DialLed.adjust_brightness(LED_MIN_DUTY if vol_adj == 0 else vol_adj * LED_DUTY_CYCLE)
+				br = LED_MIN_DUTY if vol_adj == 0 else vol_adj * LED_DUTY_CYCLE
+				self.DialLedClient.send([adjust_brightness, br])
 
 
 				"""
@@ -218,8 +219,8 @@ class RadioObjectCollection:
 
 		try:
 			logging.debug(self.__class__.__name__ + "> Stop leds.")
-			self.PowerLed.off()
-			self.DialLed.off()
+			self.PowerLedClient.send('off')
+			self.DialLedClient.send('off')
 
 			logging.debug(self.__class__.__name__ + "> Stop MPD client")
 			self.Player.ready()
@@ -355,16 +356,16 @@ def main(argv):
 		logging.debug("main()> Startup Ok")
 
 		logging.debug("main()> DialLed fade in.")
-		Radio.DialLed.fade_up()
+		Radio.DialLedClient.send('fade_up')
 
 		logging.debug("main()> PowerLed flicker on.")
-		Radio.PowerLed.flicker()
+		Radio.PowerLedClient.send('flicker')
 
 		logging.debug(Radio.TunerKnob.freq_list)
 		logging.debug(Radio.TunerKnob.station_list)
 
 		logging.debug("main()> Waiting for dial led to finish...")
-		Radio.DialLed.wait_for_done()
+		Radio.DialLedClient.send('wait_for_done')
 
 		Radio.Player.ready()
 

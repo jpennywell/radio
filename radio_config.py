@@ -12,9 +12,6 @@ SHUTDOWN_CMD = "sudo shutdown -h now"
 ENABLE_SPI = False	# Enable SPI access to pots
 
 ''' Pins (BCM mode) '''
-LED_PIN_POWER = 17	# GPIO pin numbers for led access
-LED_PIN_DIAL = 27	# NOTE: This uses the BCM numbering
-
 VOL_POT_ADC = 2 	# Pins for the pots on the ADC chip
 TUNE_POT_ADC = 1 
 
@@ -35,18 +32,6 @@ MPD_PORT = 6600			# (default = localhost, 6600)
 ''' Tuning config '''
 GAP_FACTOR = 1.18	# Factor by which the tuning gaps should be larger than
 					# the station radii. Default = 1.18 (18% larger)
-
-''' LED Settings '''
-PWM_FREQ = 50 # Frequency for LED PWM
-LED_MIN_DUTY = 1.		# Minimum duty cycle (default = 1.)
-LED_DUTY_CYCLE = 30.	# Default duty cycle for an led (default = 30.)
-
-LED_RAMP_START = 8. # Starting ramp value (larger = slower, default = 9)
-LED_RAMP_RATE = 12. # Rate to fade by (larger = slower, default = 20)
-LED_RAMP_CUTOFF = 1.1 # Breakpoint to stop fading (larger=sooner, default=1.1)
-
-POWER_FLICKER_FREQ = 1	# At what frequency the power led is flickered.
-						# (Between 1 and 10, default = 1.)
 
 ''' Volume Settings for shutdown '''
 LOW_VOL_TOLERANCE = 10	# If the volume is below this tolerance (default = 10), 
