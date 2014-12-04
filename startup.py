@@ -13,7 +13,7 @@ RunawayProcess
 
 An exception class raised when a Process spawns too quickly.
 """
-class RunawayProcess(Exception):
+class RespawningProcess(Exception):
 	pass
 
 
@@ -67,7 +67,7 @@ class Process:
 		''' Respawn, unless it's too soon after a respawn. '''
 		now = time.time()
 		if (now - self.startup_timestamp < self.respawn_threshold):
-			raise RunawayProcess
+			raise RespawningProcess
 			return False
 		else:
 			''' Keep a running measure of respawn time. '''
@@ -94,7 +94,7 @@ def main():
 				try:
 					logging.warning("LED not running. Restarting.")
 					led_control.restart()
-				except RunawayProcess:
+				except RespawningProcess:
 					logging.critical("LED spawning too quickly. Aborting.")
 					try:
 						radio.stop()
@@ -106,7 +106,7 @@ def main():
 				try:
 					logging.warning("Radio not running. Restarting.")
 					radio.restart()
-				except RunawayProcess:
+				except RespawningProcess:
 					logging.critical("Radio spawning too quickly. Aborting.")
 					break
 	except Exception as e:
