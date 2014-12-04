@@ -26,8 +26,9 @@ try:
 	from multiprocessing.connection import Client
 
 	from radio_config import *
-	from radio_hw import *
+	#from radio_hw import *
 	from radio_www import *
+	from hw import pots
 #	from led_config import LED_HOST, LED_PORT, LED_AUTH_KEY
 	from led import led_config
 
