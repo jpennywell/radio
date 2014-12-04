@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import RPi.GPIO as GPIO
 import math, logging, sys, threading
 from multiprocessing.connection import Listener, Client
