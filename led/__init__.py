@@ -1,1 +1,3 @@
-__all__ = [ 'led_config', 'led' ]
+__all__ = [ 'config', 'led' ]
+from . import led
+from . import config

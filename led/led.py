@@ -3,7 +3,7 @@ import math, logging, sys, threading
 from multiprocessing.connection import Listener, Client
 from array import array
 
-from led_config import *
+from . import config
 
 
 
@@ -32,7 +32,7 @@ class LedControl(object):
 	c_thread = None
 	
 
-	def __init__(self, address_host=LED_HOST, address_port=10000, authkey=LED_AUTH_KEY):
+	def __init__(self, address_host=config.LED_HOST, address_port=config.LED_PORT, authkey=config.LED_AUTH_KEY):
 		''' Set up a listener '''
 		self.c_address = (address_host, address_port)
 		self.c_authkey = authkey
@@ -152,7 +152,7 @@ class Led(LedControl):
 		if self.led_t:
 			self.stop()
 		if not self.pwm:
-			self.pwm = GPIO.PWM(self.pin, PWM_FREQ)
+			self.pwm = GPIO.PWM(self.pin, config.PWM_FREQ)
 		self.pwm.start(0)
 		self.pwm.ChangeDutyCycle(b)
 
@@ -166,7 +166,7 @@ class Led(LedControl):
 			if self.led_t:
 				self.stop()
 			if not self.pwm:
-				self.pwm = GPIO.PWM(self.pin, PWM_FREQ)
+				self.pwm = GPIO.PWM(self.pin, config.PWM_FREQ)
 				self.pwm.start(0)
 			self.led_t = threading.Thread(target=target_func)
 			self.led_t.start()
@@ -237,7 +237,7 @@ class Led(LedControl):
 				break
 			self.pwm.ChangeDutyCycle(0)
 			time.sleep(0.5)
-			self.pwm.ChangeDutyCycle(LED_DUTY_CYCLE)
+			self.pwm.ChangeDutyCycle(config.LED_DUTY_CYCLE)
 			time.sleep(0.5)
 			count += 1
 
@@ -253,14 +253,14 @@ class Led(LedControl):
 		"""
 		The fade-in function called by 'self.fade_up()'
 		"""
-		led_ramp_fac = LED_RAMP_CUTOFF + 1
+		led_ramp_fac = config.LED_RAMP_CUTOFF + 1
 		dc = 0
-		while led_ramp_fac > LED_RAMP_CUTOFF:
+		while led_ramp_fac > config.LED_RAMP_CUTOFF:
 			if self.led_t_stop_flag:
 				break
 			dc += 1
-			led_ramp_fac = 1. + math.exp(LED_RAMP_START - dc/LED_RAMP_RATE)
-			self.pwm.ChangeDutyCycle(LED_DUTY_CYCLE/led_ramp_fac)
+			led_ramp_fac = 1. + math.exp(config.LED_RAMP_START - dc/config.LED_RAMP_RATE)
+			self.pwm.ChangeDutyCycle(config.LED_DUTY_CYCLE/led_ramp_fac)
 			time.sleep(0.1)
 
 
@@ -275,7 +275,7 @@ class Led(LedControl):
 		"""
 		The fade-out function called by 'self.fade_down()'
 		"""
-		for dc in range(int(LED_DUTY_CYCLE), 0, -5):
+		for dc in range(int(config.LED_DUTY_CYCLE), 0, -5):
 			if self.led_t_stop_flag:
 				break
 			self.pwm.ChangeDutyCycle(dc)
