@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import www.server
-import www.config
+import service.www as www
 
-from . import cfg_ports
+host = '192.168.0.12'
+port = 80
 
-server = RadioWebServer(www.config.host, www.config.port)
+server = www.RadioWebServer(host, port)
+

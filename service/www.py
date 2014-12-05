@@ -6,7 +6,7 @@
 import BaseHTTPServer, logging, threading, urllib2
 
 from . import service
-from . import www_cfg
+from . import www_cfg as config
 
 """
 StoppableServer
@@ -53,6 +53,9 @@ class RadioWebServer(service.Service):
 	server = False
 
 
+	indexhtml_data = ''
+
+
 	def __init__(self, host, port):
 		"""
 		Start a server in a thread.
@@ -83,6 +86,20 @@ class RadioWebServer(service.Service):
 		self.server_t.join()
 		logging.debug(self.__class__.__name__ + "> ...thread done.")
 
+
+	def html(self, data):
+		try:
+			target = open('index.html', 'w')
+			target.write(config.HTML_HEADER)
+
+			for k in data:
+				target.write("<tr><td>" + str(k) + "</td><td>" + str(songdata[k]) + "</td></tr>\n")
+
+			target.write(config.HTML_FOOTER)
+			target.close()
+		except IOError as e:
+			logging.error("write_html_data()> Can't open index.html for write: [" + str(e) + "]")
+
 #End of RadioWebServer
 
 
@@ -112,52 +129,4 @@ class IndexOnlyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 #End of IndexOnlyHandler
 
-HTML_HEADER = "<!DOCTYPE html>\
-<html>\
-<head>\
-<title>Radio Status</title>\
-<style>\
-body {\
-	font-family: sans-serif;\
-}\
-table {\
-	border-collapse: collapse;\
-}\
-tr {\
-}\
-td {\
-	border: solid 1px #ccc;\
-	padding: 10px 15px;\
-}\
-tr > td {\
-	background: red;\
-}\
-</style>\
-</head>\
-<body>\
-<h1>Now Playing</h1>\
-<table>\
-"
-HTML_FOOTER = "</table>\
-</body>\
-</html>"
-
-
-def write_html_data(mpd):
-	try:
-		target = open('index.html', 'w')
-		target.write(HTML_HEADER)
-
-		songdata = mpd.currentsong()
-		for k in songdata:
-			target.write("<tr><td>" + str(k) + "</td><td>" + str(songdata[k]) + "</td></tr>\n")
-
-		target.write(HTML_FOOTER)
-		target.close()
-	except IOError as e:
-		logging.error("write_html_data()> Can't open index.html for write: [" + str(e) + "]")
-	except mpd.CommandError as e:
-		logging.error("write_html_data()> MPD command error: [" + str(e) + "]")
-	except KeyError:
-		pass
 

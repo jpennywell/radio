@@ -11,7 +11,7 @@ led_power_port = 6000
 led_dial_port = 6001
 
 def main():
-	GPIO.setmode(GPIO.BCM)
+#	GPIO.setmode(GPIO.BCM)
 
 	logging.basicConfig(level=logging.DEBUG)
 
