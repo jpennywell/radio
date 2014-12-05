@@ -83,8 +83,8 @@ class RadioObjectCollection:
 
 		self.Player = RadioMPDClient()
 
-		if ENABLE_WEB:
-			self.WebServer = RadioWebServer(WEB_HOST, WEB_PORT)
+#		if ENABLE_WEB:
+#			self.WebServer = RadioWebServer(WEB_HOST, WEB_PORT)
 
 
 	def _signal_term_handler(self, signal, frame):
@@ -193,8 +193,8 @@ class RadioObjectCollection:
 					"""
 					Update the web server
 					"""
-					if ENABLE_WEB:
-						write_html_data(self.Player)
+#					if ENABLE_WEB:
+#						write_html_data(self.Player)
 
 				except mpd.CommandError as e:
 					logging.error(self.__class__.__name__ + "> mpd:Error load " + st_name + ":" + str(e))
@@ -231,8 +231,8 @@ class RadioObjectCollection:
 			self.Player.disconnect()
 
 			logging.debug(self.__class__.__name__ + "> Stop Web Server")
-			if ENABLE_WEB:
-				self.WebServer.stop()
+#			if ENABLE_WEB:
+#				self.WebServer.stop()
 
 		except Exception as e:
 			logging.critical(self.__class__.__name__ + "> ERROR! Can't stop a service: " + str(e))

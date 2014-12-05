@@ -2,10 +2,11 @@
 
 import RPi.GPIO as GPIO
 import logging
-import led.led as led
+import service.led as led
 
 led_power_pin = 17
 led_dial_pin = 27
+
 led_power_port = 6000
 led_dial_port = 6001
 
@@ -18,19 +19,20 @@ def main():
 	DialLed = led.Led(pin=led_dial_pin, port=led_dial_port)
 	PowerLed = led.Led(pin=led_power_pin, port=led_power_port)
 
-	logging.debug('Loop begun.')
-	DialLed.c_loop()
-	PowerLed.c_loop()
+	logging.debug('One Loop begun.')
+	DialLed.svc_loop()
+	logging.debug('Two Loop begun.')
+	PowerLed.svc_loop()
 
 	try:
 		while True:
 			pass
 	except KeyboardInterrupt as e:
 		logging.info("Ctrl-C: Quitting: " + str(e))
-		DialLed.c_cleanup()
+		DialLed.svc_cleanup()
 		DialLed.stop()
 
-		PowerLed.c_cleanup()
+		PowerLed.svc_cleanup()
 		PowerLed.stop()
 
 		GPIO.cleanup()

@@ -1,9 +1,10 @@
 import RPi.GPIO as GPIO
 import os, spidev, math
-from radio_config import PWM_FREQ, LED_MIN_DUTY, LED_DUTY_CYCLE, \
-							LED_RAMP_START, LED_RAMP_RATE, LED_RAMP_CUTOFF, \
-							POWER_FLICKER_FREQ, GAP_FACTOR, \
-							SPICLK, SPIMISO, SPIMOSI, SPICS
+from . import config
+#from radio_config import PWM_FREQ, LED_MIN_DUTY, LED_DUTY_CYCLE, \
+#							LED_RAMP_START, LED_RAMP_RATE, LED_RAMP_CUTOFF, \
+#							POWER_FLICKER_FREQ, GAP_FACTOR, \
+#							SPICLK, SPIMISO, SPIMOSI, SPICS
 
 """
 PotChange
@@ -151,7 +152,7 @@ class PotReader:
 		if self.use_spi:
 			pot_read = self._readspi(self.pot_pin)
 		else:
-			pot_read = self._readadc(self.pot_pin, SPICLK, SPIMOSI, SPIMISO, SPICS)
+			pot_read = self._readadc(self.pot_pin, config.SPICLK, config.SPIMOSI, config.SPIMISO, config.SPICS)
 
 		smoothed_read = int(self.smooth_fac * pot_read + (1 - self.smooth_fac) * self.last_read)
 		self.last_read = smoothed_read
@@ -236,8 +237,8 @@ class TunerPotReader(PotReader):
 		"""
 
 		num_st = len(self.station_list)
-		self.cfg_st_radius = 1023 / (num_st * (GAP_FACTOR + 2))
-		self.cfg_st_gap = self.cfg_st_radius * GAP_FACTOR
+		self.cfg_st_radius = 1023 / (num_st * (config.GAP_FACTOR + 2))
+		self.cfg_st_gap = self.cfg_st_radius * config.GAP_FACTOR
 
 		for t in range(0, len(self.station_list), 1):
 			fr = (0.5 * self.cfg_st_gap + self.cfg_st_radius) + \

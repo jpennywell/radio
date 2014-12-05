@@ -8,6 +8,8 @@ then this script will abort.
 """
 import sys, subprocess, threading, time, logging
 
+from . import cfg_ports
+
 """
 RunawayProcess
 

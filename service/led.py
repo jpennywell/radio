@@ -3,88 +3,8 @@ import math, logging, sys, threading
 from multiprocessing.connection import Listener, Client
 from array import array
 
-from . import config
-
-
-
-"""
-LedControl
-
-A Class that interfaces with hardware Leds through the Led class.
-This class accepts commands over an ipc-type listener.
-
-Send it commands as strings or a single 'close' to shutdown.
-"""
-class LedControl(object):
-	''' Keep this True to keep running '''
-	c_keepalive = True
-
-	''' The address of this server '''
-	c_address = ['', 0]
-
-	''' The authkey for connecting to the listener server '''
-	c_authkey = ''
-
-	''' The multiprocessing listener '''
-	c_listener = None
-
-	''' A thread for the listener loop '''
-	c_thread = None
-	
-
-	def __init__(self, address_host=config.LED_HOST, address_port=config.LED_PORT, authkey=config.LED_AUTH_KEY):
-		''' Set up a listener '''
-		self.c_address = (address_host, address_port)
-		self.c_authkey = authkey
-		self.c_listener = Listener(address=self.c_address, authkey=self.c_authkey)
-
-	def c_cleanup(self):
-		''' Shutdown the listener and any led threads. '''
-		self.c_keepalive = False
-		cl = Client(address=self.c_address, authkey=self.c_authkey)
-		cl.send('close')
-		cl.close()
-#		self.stop()
-
-	def c_loop(self):
-		self.c_thread = threading.Thread(target=self._c_loop)
-		self.c_thread.start()
-
-	def _c_loop(self):
-		''' Start accepting messages '''
-		logging.info('Receiving messages.')
-		conn = self.c_listener.accept()
-		while self.c_keepalive:
-			logging.info(">>> still listening <<<")
-			msg = conn.recv()
-			if msg == 'close':
-				logging.info('Closing.')
-				conn.close()
-				break
-			elif isinstance(msg, list):
-				ledACT = msg[0]
-				ledARGS = msg[1]
-				try:
-					func = getattr(self, ledACT)
-					if callable(func):
-						func(ledARGS)
-				except Exception as e:
-					logging.error("LED Error: " + str(e))
-					pass
-			else:
-				ledACT = msg
-				try:
-					func = getattr(self, ledACT)
-					if callable(func):
-						func()
-				except Exception as e:
-					logging.error("LED Error: " + str(e))
-
-		self.c_listener.close()
-		return 0
-
-#End of LedControl
-
+from . import service
+from . import led_cfg as config
 
 
 """
@@ -98,7 +18,7 @@ The discrete methods are on() and off().
 
 The pwm methods are threaded, except for adjust_brightness().
 """
-class Led(LedControl):
+class Led(service.Service):
 	''' Hardware pin '''
 	pin = -1
 

@@ -5,6 +5,9 @@
 
 import BaseHTTPServer, logging, threading, urllib2
 
+from . import service
+from . import www_cfg
+
 """
 StoppableServer
 
@@ -43,7 +46,7 @@ RadioWebServer
 
 A webserver that runs in its own thread.
 """
-class RadioWebServer:
+class RadioWebServer(service.Service):
 	"""
 	The StoppableServer object.
 	"""
