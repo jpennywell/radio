@@ -1,4 +1,4 @@
-import mpd, logging
+import mpd, logging, time
 
 """
 RadioMPDClient

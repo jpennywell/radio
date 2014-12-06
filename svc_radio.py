@@ -17,7 +17,7 @@ Todo:
 """
 
 try:
-	import logging, os, sys, time, signal, math, random
+	import logging, os, sys, time, signal, math, random, socket
 
 	import radio_config as config
 
@@ -43,7 +43,8 @@ try:
 	with open('radio.log', 'w'):
 		pass
 
-	logging.basicConfig(filename='radio.log', level=getattr(logging, config.LOG_LEVEL))
+#	logging.basicConfig(filename='radio.log', level=getattr(logging, config.LOG_LEVEL))
+	logging.basicConfig(level=getattr(logging, config.LOG_LEVEL))
 except IOError as e:
 	logging.critical("Can't open log file for write: " + str(e))
 
@@ -68,20 +69,33 @@ def main(argv):
 		"""
 		Setup the radio object, and begin startup routine.
 		"""
-		signal.signal(signal.SIGTERM, radio_cleanup)
+#		signal.signal(signal.SIGTERM, radio_cleanup)
 
-		dialview = DialView()
+		logging.debug('Startup begun')
 
-		cl_dial_led = Client( (led_cfg.LED_HOST, led_cfg.LED_DIAL_PORT) )
-		cl_power_led = Client( (led_cfg.LED_HOST, led_cfg.LED_POWER_PORT) )
-		cl_web_server = Client( (www_cfg.WEB_HOST, www_cfg.WEB_LISTEN_PORT) )
+		logging.debug('DialView started.')
+		text_dial = dialview.DialView()
 
+
+		try:
+			logging.debug('Connecting to dial Led service')
+			cl_dial_led = Client( (led_cfg.LED_HOST, led_cfg.LED_DIAL_PORT) )
+			logging.debug('Connecting to power Led service')
+			cl_power_led = Client( (led_cfg.LED_HOST, led_cfg.LED_POWER_PORT) )
+			logging.debug('Connecting to web service')
+			cl_web_server = Client( (www_cfg.WEB_HOST, www_cfg.WEB_LISTEN_PORT) )
+		except socket.error as e:
+			logging.warning("Can't connect to a service: " + str(e))
+
+		logging.debug('Creating volume knob')
 		vol_knob = pots.VolumePotReader(config.VOL_POT_ADC)
 		vol_knob.smooth_fac = 0.9
 
+		logging.debug('Creating tuning knob')
 		tuner_knob = pots.TunerPotReader(config.TUNE_POT_ADC, config.STATION_SET)
 
-		player = rmpd.RadioMPDClient()
+		logging.debug('Starting MPD client')
+		player = rmpd.RadioMPDClient(config.MPD_HOST, config.MPD_PORT)
 
 		logging.debug("main()> Startup Ok")
 
@@ -110,7 +124,7 @@ def main(argv):
 			"""
 			try:
 				vol_knob.read_pot()
-			except PotChange:
+			except pots.PotChange:
 				"""
 				If the volume is low enough, start a timer
 				Otherwise, reset it.
@@ -140,7 +154,7 @@ def main(argv):
 			"""
 			try:
 				tuner_knob.read_pot()
-			except PotChange:
+			except pots.PotChange as change:
 				"""
 				Update volume scaling based on tuning distance.
 				Adjust dial brightness.
@@ -156,76 +170,70 @@ def main(argv):
 						r = tuner_knob.cfg_st_radius
 						d = abs(tuner_knob.tuning - tuner_knob.tuned_to())
 						vol_adj = round(0.5 * (1 + math.erf(3.64 - 4*d/r)), 2)
-					except (ArithmeticError, FloatingPointError, ZeroDivisionError):
+						logging.info("Math: r="+str(r)+", d="+str(d)+",adj="+str(vol_adj))
+					except (ArithmeticError, FloatingPointError, ZeroDivisionError) as e:
+						logging.error("Math error: " + str(e))
 						vol_adj = 1.0
 				else:
 					vol_adj = 0
 
 				vol_knob.volume_cap = vol_adj * vol_knob.volume
 				vol_knob.volumize(vol_knob.volume_cap)
+				logging.debug("Readjusting volume to " + str(vol_adj) + " of " + str(vol_knob.volume) + ": " + str(vol_knob.volume_cap))
 
 				if cl_dial_led is not None:
 					cl_dial_led.send(['adjust_brightness', vol_adj])
 
-
 				"""
 				Update the MPD server.
 				"""
-				try:
-					# Make sure we're connected
-					(st_name, st_random, st_play_func) = tuner_knob.station_list[tuner_knob.SID]
+				if change.is_new_station:
+					try:
+						(st_name, st_random, st_play_func) = tuner_knob.station_list[tuner_knob.SID]
 
-					if (st_random):
-						sid = random.randrange(0,
-								len(player.playlist()) - 1,
-								1)
-					else:
-						sid = 0
+						if (st_random):
+							sid = random.randrange(0,
+									len(player.playlist()) - 1,
+									1)
+						else:
+							sid = 0
 
-					logging.info("> Load " + st_name)
-					logging.info("> Playing " + str(sid))
+						logging.info("> Load " + st_name)
+						logging.info("> Playing " + str(sid))
 
-					player.ready()
-					player.clear()
-					player.load(st_name)
-					player.random(1 if st_random else 0)
+						player.ready()
+						player.clear()
+						player.load(st_name)
+						player.random(1 if st_random else 0)
 
-					if (callable(st_play_func)):
-						st_play_func(player)
-					else:
-						player.play(sid)
+						if (callable(st_play_func)):
+							st_play_func(player)
+						else:
+							player.play(sid)
 
-					"""
-					Update the web server
-					"""
-					if cl_web_server is not None:
-						cl_web_server.send(['html', player.currentsong()])
+						"""
+						Update the web server
+						"""
+						if cl_web_server is not None:
+							cl_web_server.send(['html', player.currentsong()])
 
-				except rmpd.CommandError as e:
-					logging.error("> mpd:Error load " + st_name + ":" + str(e))
-				except ValueError as e:
-					logging.error("> ValueError on play " + st_name + ": " + str(e))
+					except rmpd.CommandError as e:
+						logging.error("> mpd:Error load " + st_name + ":" + str(e))
+					except ValueError as e:
+						logging.error("> ValueError on play " + st_name + ": " + str(e))
+				#endif
 			#End of TunerKnob.read_pot()
 
 
 			"""
 			3.	Finish the loop with a delay, and print any debug.
 			"""
-			if SHOW_DIAL:
-				dial_view.display(volume_knob, tuner_knob)
+			if config.SHOW_DIAL:
+				text_dial.display(vol_knob, tuner_knob)
 			time.sleep(0.25)
 		#end while
 
-	except KeyboardInterrupt:
-		"""
-		On a Ctrl-C, shutdown the radio program.
-		The Pi stays running.
-		"""
-		logging.debug("main()> Ctrl-C. Quitting.")
-		raise RadioCleanup
-		logging.debug("main()> Shutdown complete.")
-		return 0
-	except RadioCleanup:
+	except (KeyboardInterrupt, RadioCleanup):
 		"""
 		Do a cleanup of services and hardware.
 		"""
@@ -244,8 +252,6 @@ def main(argv):
 			player.stop() 
 			player.close()
 			player.disconnect()
-
-
 		except Exception as e:
 			logging.critical("> ERROR! Can't stop a service: " + str(e))
 		finally:
@@ -276,5 +282,6 @@ def main(argv):
 Run the program.
 """
 if __name__ == "__main__":
+	logging.info("Calling main()")
 	status = main(sys.argv)
 	os._exit(status)

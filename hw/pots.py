@@ -9,7 +9,9 @@ PotReader classes can raise this.
 Catch it to act on a changed pot value.
 """
 class PotChange(Exception):
-	pass
+	def __init__(self, is_new_station = False)
+		self.is_new_station = is_new_station
+
 
 
 """
@@ -39,8 +41,9 @@ class PotReader:
 	"""
 	A smoothing factor for averaging-out read values.
 	(1 = ignore old values, 0 = ignore newly-read values)
+	default: 0.6
 	"""
-	smooth_fac = 0.6
+	smooth_fac = 0.8
 
 	"""
 	Use a SPI interface instead of the ADC.
@@ -325,7 +328,9 @@ class TunerPotReader(PotReader):
 			# New station
 			if new_station_id != self.SID:
 				self.SID = new_station_id
-				raise PotChange
+				raise PotChange(is_new_station = True)
+
+		raise PotChange
 
 # End of class TunerKnob
 

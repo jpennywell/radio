@@ -30,31 +30,34 @@ class Service(object):
 		self.svc_thread.start()
 
 	def _svc_loop(self):
-                conn = self.svc_listener.accept()
-                while self.svc_keepalive:
-                        msg = conn.recv()
-                        if msg == 'QUIT':
-                                conn.close()
-                                break
-                        elif isinstance(msg, list):
-                                ACT = msg[0]
-                                ARGS = msg[1]
-                                try:
-                                        func = getattr(self, ACT)
-                                        if callable(func):
-                                                func(ARGS)
-                                except Exception as e:
-                                        pass
-                        else:
-				print(">> Incoming: " + str(msg))
-                                try:
-                                        func = getattr(self, msg)
-                                        if callable(func):
-                                                func()
-                                except Exception as e:
+		conn = self.svc_listener.accept()
+		while self.svc_keepalive:
+			try:
+				msg = conn.recv()
+			except EOFError:
+				continue
+			if msg == 'QUIT':
+				conn.close()
+				break
+			elif isinstance(msg, list):
+				ACT = msg[0]
+				ARGS = msg[1]
+				try:
+					func = getattr(self, ACT)
+					if callable(func):
+						func(ARGS)
+				except Exception as e:
 					pass
-
-                self.svc_listener.close()
-                return 0
+			else:
+				print(">> Incoming: " + str(msg))
+				try:
+					func = getattr(self, msg)
+					if callable(func):
+						func()
+				except Exception as e:
+					pass
+		#endwhile
+		self.svc_listener.close()
+		return 0
 
 

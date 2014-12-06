@@ -3,18 +3,15 @@
 import logging
 
 import service.www as www
-
-host = '192.168.0.12'
-port = 80
-www_listener_port = 6100
+import service.www_cfg as config
 
 def main():
 	logging.basicConfig(level=logging.DEBUG)
 
 	logging.debug('Startup server')
 
-	server = www.RadioWebServer(host, port)
-	server.svc_setup(port=www_listener_port)
+	server = www.RadioWebServer(config.WEB_HOST, config.WEB_HTTP_PORT)
+	server.svc_setup(port=config.WEB_LISTEN_PORT)
 	server.svc_loop()
 
 	try:
