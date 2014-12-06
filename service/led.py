@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 
-import math, logging, sys, threading
+import math, logging, sys, threading, time
 
 from multiprocessing.connection import Listener, Client
 from array import array

@@ -8,22 +8,20 @@ class Service(object):
 
 	svc_host = ''
 	svc_port = 0
-	svc_key = ''
 
 	svc_thread = None
 
 	def __init__(self):
 		pass
 
-	def svc_setup(self, host='localhost', port='6000', authkey='secret'):
+	def svc_setup(self, host='localhost', port='6000'):
 		self.svc_host = host
 		self.svc_port = port
-		self.svc_key = authkey
-		self.svc_listener = Listener(address=(self.svc_host, self.svc_port), authkey=self.svc_key)
+		self.svc_listener = Listener(address=(self.svc_host, self.svc_port))
 
 	def svc_cleanup(self):
 		self.svc_keepalive = False
-		cl = Client(address=(self.svc_host,self.svc_port), authkey=self.svc_key)
+		cl = Client(address=(self.svc_host,self.svc_port))
 		cl.send('QUIT')
 		cl.close()
 
@@ -48,6 +46,7 @@ class Service(object):
                                 except Exception as e:
                                         pass
                         else:
+				print(">> Incoming: " + str(msg))
                                 try:
                                         func = getattr(self, msg)
                                         if callable(func):
