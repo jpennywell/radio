@@ -16,13 +16,16 @@ def main():
 	logging.basicConfig(level=logging.DEBUG)
 
 	logging.debug('Startup leds.')
-	DialLed = led.Led(pin=led_dial_pin, port=led_dial_port)
-	PowerLed = led.Led(pin=led_power_pin, port=led_power_port)
 
-	logging.debug('One Loop begun.')
+	DialLed = led.Led(pin=led_dial_pin)
+	DialLed.svc_setup(port=led_dial_port)
 	DialLed.svc_loop()
-	logging.debug('Two Loop begun.')
+	logging.debug('One Loop begun.')
+
+	PowerLed = led.Led(pin=led_power_pin)
+	PowerLed.svc_setup(port=led_power_port)
 	PowerLed.svc_loop()
+	logging.debug('Two Loop begun.')
 
 	try:
 		while True:

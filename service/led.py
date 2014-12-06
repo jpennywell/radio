@@ -35,14 +35,12 @@ class Led(service.Service):
 	led_t_stop_flag = False
 
 
-	def __init__(self, pin, host='localhost', port=6000, authkey='secret'):
+	def __init__(self, pin):
 		"""
 		Setup GPIO for this pin.
 		"""
 		self.pin = pin
 		GPIO.setup(self.pin, GPIO.OUT)
-
-		super(Led, self).__init__(host, port, authkey)
 
 
 	def _discrete_change(self, toggle):

@@ -12,7 +12,10 @@ class Service(object):
 
 	svc_thread = None
 
-	def __init__(self, host, port, authkey):
+	def __init__(self):
+		pass
+
+	def svc_setup(self, host='localhost', port='6000', authkey='secret'):
 		self.svc_host = host
 		self.svc_port = port
 		self.svc_key = authkey

@@ -52,10 +52,6 @@ class RadioWebServer(service.Service):
 	"""
 	server = False
 
-
-	indexhtml_data = ''
-
-
 	def __init__(self, host, port):
 		"""
 		Start a server in a thread.
@@ -71,6 +67,9 @@ class RadioWebServer(service.Service):
 			logging.info(self.__class__.__name__ + "> WWW service running at " + self.host + ':' + str(self.port))
 		except Exception as e:
 			logging.critical(self.__class__.__name__ + "> Can't start web server: " + str(e))
+
+		empty_data = {'':''}
+		self.html(empty_data)
 
 
 	def stop(self):
@@ -93,7 +92,7 @@ class RadioWebServer(service.Service):
 			target.write(config.HTML_HEADER)
 
 			for k in data:
-				target.write("<tr><td>" + str(k) + "</td><td>" + str(songdata[k]) + "</td></tr>\n")
+				target.write("<tr><td>" + str(k) + "</td><td>" + str(data[k]) + "</td></tr>\n")
 
 			target.write(config.HTML_FOOTER)
 			target.close()
