@@ -69,8 +69,8 @@ class RadioObjectCollection:
 
 		self.DialView = DialView()
 
-		self.DialLedClient = Client(led_cfg.LED_HOST, led_cfg.LED_PORT_DIAL, led_cfg.LED_AUTH_KEY)
-		self.PowerLedClient = Client(led_cfg.LED_HOST, led_cfg.LED_PORT_POWER, led_cfg.LED_AUTH_KEY)
+		self.DialLedClient = Client(led_cfg.LED_HOST, led_cfg.LED_DIAL_PORT, led_cfg.LED_AUTH_KEY)
+		self.PowerLedClient = Client(led_cfg.LED_HOST, led_cfg.LED_POWER_PORT, led_cfg.LED_AUTH_KEY)
 
 		self.VolumeKnob = pots.VolumePotReader(config.VOL_POT_ADC)
 		self.VolumeKnob.smooth_fac = 0.9
@@ -366,15 +366,10 @@ def main(argv):
 		This is probably because we can't read the music directory?"
 		"""
 		logging.critical("main()> OSError: " + str(e)) 
-	except IOError as e:
-		"""
-		import stations probably failed.
-		"""
-		logging.critical("main()> IOError: " + str(e))
 	except RuntimeError as e:
 		logging.critical("main()> RuntimeError: " + str(e))
-	except Exception as e:
-		print(str(e))
+#	except Exception as e:
+#		print(str(e))
 	finally:
 		logging.debug("main()> Finished. Return 0")
 		return 0

@@ -2,7 +2,8 @@
 
 ''' Listener host and ports '''
 LED_HOST = 'localhost'
-LED_PORT = 6000
+LED_DIAL_PORT = 6000
+LED_POWER_PORT = 6001
 LED_AUTH_KEY = 'salt'
 
 ''' Power and operating settings '''
