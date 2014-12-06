@@ -244,33 +244,6 @@ class RadioObjectCollection:
 # End of RadioObjectCollection
 
 
-"""
-RadioMPDClient
-
-This extends the mpd.MPDClient class.
-
-Adds a 'ready' method that ensures that the client is still connected.
-"""
-class RadioMPDClient(mpd.MPDClient):
-
-	def ready(self):
-		"""
-		Ensures that the client is still connected.
-		Call this before executing other client commands.
-		"""
-		while True:
-			try:
-				status = self.status()
-				break
-			except mpd.ConnectionError:
-				try:
-					self.connect(config.MPD_HOST, config.MPD_PORT)
-					time.sleep(1)
-				except TypeError:
-					print("ERROR: Still can't connect.")
-					sys.exit(0)
-
-# End of class RadioMPDClient
 
 
 
