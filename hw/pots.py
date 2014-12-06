@@ -1,10 +1,6 @@
 import RPi.GPIO as GPIO
 import os, spidev, math
 from . import config
-#from radio_config import PWM_FREQ, LED_MIN_DUTY, LED_DUTY_CYCLE, \
-#							LED_RAMP_START, LED_RAMP_RATE, LED_RAMP_CUTOFF, \
-#							POWER_FLICKER_FREQ, GAP_FACTOR, \
-#							SPICLK, SPIMISO, SPIMOSI, SPICS
 
 """
 PotChange
@@ -61,7 +57,19 @@ class PotReader:
 		"""
 		Sets the pin to use.
 		"""
+		GPIO.setwarnings(False)
+
+		GPIO.setmode(GPIO.BCM)
+
+		GPIO.setup(config.SPIMOSI, GPIO.OUT)
+		GPIO.setup(config.SPIMISO, GPIO.IN)
+		GPIO.setup(config.SPICLK, GPIO.OUT)
+		GPIO.setup(config.SPICS, GPIO.OUT)
+
 		self.pot_pin = pin
+
+		if config.ENABLE_SPI:
+			self.enable_spi()
 
 
 	def update(self, pot_val):

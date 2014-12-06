@@ -9,6 +9,10 @@ SHOW_DIAL=True
 SHUTDOWN_CMD = "sudo shutdown -h now"
 
 
+VOL_POT_ADC = 2
+TUNE_POT_ADC = 1
+
+
 ''' MPD Client Information '''
 MPD_HOST = 'localhost'	# MPD host connection info
 MPD_PORT = 6600			# (default = localhost, 6600)

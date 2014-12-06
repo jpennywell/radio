@@ -25,12 +25,11 @@ try:
 
 	from multiprocessing.connection import Client
 
-	from radio_config import *
-	#from radio_hw import *
-	from radio_www import *
+	import radio_config as config
+
 	from hw import pots
-#	from led_config import LED_HOST, LED_PORT, LED_AUTH_KEY
-	from led import led_config
+	from service import led_cfg
+	from service import www_cfg
 
 except RuntimeError as e:
 	logging.critical("Error loading an import: " + str(e))
@@ -45,7 +44,7 @@ try:
 	with open('radio.log', 'w'):
 		pass
 
-	logging.basicConfig(filename='radio.log', level=getattr(logging, LOG_LEVEL))
+	logging.basicConfig(filename='radio.log', level=getattr(logging, config.LOG_LEVEL))
 except IOError as e:
 	logging.critical("Can't open log file for write: " + str(e))
 
@@ -61,7 +60,7 @@ class RadioObjectCollection:
 	TunerKnob = False 	# instance of TunerPotReader class
 	VolumeKnob = False	# instance of VolumePotReader class
 	DialView = False	# instance of DialView class
-	WebServer = False	# instance of RadioWebServer class
+	WebClient = False
 	DialLedClient = None
 	PowerLedClient = None
 
@@ -70,21 +69,17 @@ class RadioObjectCollection:
 
 		self.DialView = DialView()
 
-		self.DialLedClient = Client(LED_HOST, LED_PORT_DIAL, LED_AUTH_KEY)
-		self.PowerLedClient = Client(LED_HOST, LED_PORT_POWER, LED_AUTH_KEY)
+		self.DialLedClient = Client(led_cfg.LED_HOST, led_cfg.LED_PORT_DIAL, led_cfg.LED_AUTH_KEY)
+		self.PowerLedClient = Client(led_cfg.LED_HOST, led_cfg.LED_PORT_POWER, led_cfg.LED_AUTH_KEY)
 
-		self.VolumeKnob = VolumePotReader(VOL_POT_ADC)
+		self.VolumeKnob = pots.VolumePotReader(config.VOL_POT_ADC)
 		self.VolumeKnob.smooth_fac = 0.9
 
-		self.TunerKnob = TunerPotReader(TUNE_POT_ADC, STATION_SET)
-		if ENABLE_SPI:
-			ret_v = self.VolumeKnob.enable_spi()
-			ret_t = self.TunerKnob.enable_spi()
+		self.TunerKnob = pots.TunerPotReader(config.TUNE_POT_ADC, config.STATION_SET)
 
 		self.Player = RadioMPDClient()
 
-#		if ENABLE_WEB:
-#			self.WebServer = RadioWebServer(WEB_HOST, WEB_PORT)
+		self.WebClient = Client(www_cfg.WEB_HOST, www_cfg.WEB_LISTEN_PORT, www_cfg.WEB_AUTH_KEY)
 
 
 	def _signal_term_handler(self, signal, frame):
@@ -112,14 +107,14 @@ class RadioObjectCollection:
 				If it's running, see for how long, and
 				shutdown if it's past the cutoff.
 				"""
-				if (self.VolumeKnob.volume <= LOW_VOL_TOLERANCE):
+				if (self.VolumeKnob.volume <= config.LOW_VOL_TOLERANCE):
 					if (low_vol_start == -1):
 						logging.info(self.__class__.__name__ + "> Shutdown timer started.")
 						low_vol_start = time.time()
 					else:
 						low_vol_delta = time.time() - low_vol_start
 
-						if low_vol_delta >= TIME_FOR_POWER_OFF:
+						if low_vol_delta >= config.TIME_FOR_POWER_OFF:
 							logging.info(self.__class__.__name__ + "> Volume low - Shutting down...")
 							self.shutdown(True)
 							return 0
@@ -159,8 +154,8 @@ class RadioObjectCollection:
 				self.VolumeKnob.volume_cap = vol_adj * self.VolumeKnob.volume
 				self.VolumeKnob.volumize(self.VolumeKnob.volume_cap)
 
-				br = LED_MIN_DUTY if vol_adj == 0 else vol_adj * LED_DUTY_CYCLE
-				self.DialLedClient.send([adjust_brightness, br])
+				br = led_cfg.LED_MIN_DUTY if vol_adj == 0 else vol_adj * led_cfg.LED_DUTY_CYCLE
+				self.DialLedClient.send(['adjust_brightness', br])
 
 
 				"""
@@ -193,8 +188,7 @@ class RadioObjectCollection:
 					"""
 					Update the web server
 					"""
-#					if ENABLE_WEB:
-#						write_html_data(self.Player)
+					self.WebClient.send(['html', self.Player.currentsong()])
 
 				except mpd.CommandError as e:
 					logging.error(self.__class__.__name__ + "> mpd:Error load " + st_name + ":" + str(e))
@@ -220,8 +214,8 @@ class RadioObjectCollection:
 		logging.debug(self.__class__.__name__ + "> Cleaning up...")
 
 		try:
-			logging.debug(self.__class__.__name__ + "> Stop leds.")
-			self.PowerLedClient.send('off')
+			logging.debug(self.__class__.__name__ + "> Show info on leds.")
+			self.PowerLedClient.send('blink')
 			self.DialLedClient.send('off')
 
 			logging.debug(self.__class__.__name__ + "> Stop MPD client")
@@ -231,8 +225,6 @@ class RadioObjectCollection:
 			self.Player.disconnect()
 
 			logging.debug(self.__class__.__name__ + "> Stop Web Server")
-#			if ENABLE_WEB:
-#				self.WebServer.stop()
 
 		except Exception as e:
 			logging.critical(self.__class__.__name__ + "> ERROR! Can't stop a service: " + str(e))
@@ -272,7 +264,7 @@ class RadioMPDClient(mpd.MPDClient):
 				break
 			except mpd.ConnectionError:
 				try:
-					self.connect(MPD_HOST, MPD_PORT)
+					self.connect(config.MPD_HOST, config.MPD_PORT)
 					time.sleep(1)
 				except TypeError:
 					print("ERROR: Still can't connect.")
@@ -336,21 +328,6 @@ def main(argv):
 	"""
 
 	try:
-		"""
-		Set pin mode.
-		"""
-		GPIO.setwarnings(False)
-
-		GPIO.setmode(GPIO.BCM)
-
-		"""
-		Setup pins for the ADC chip.
-		"""
-		GPIO.setup(SPIMOSI, GPIO.OUT)
-		GPIO.setup(SPIMISO, GPIO.IN)
-		GPIO.setup(SPICLK, GPIO.OUT)
-		GPIO.setup(SPICS, GPIO.OUT)
-
 		"""
 		Setup the radio object, and begin startup routine.
 		"""

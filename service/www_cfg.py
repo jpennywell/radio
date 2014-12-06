@@ -1,3 +1,9 @@
+WEB_HOST = 'localhost'
+WEB_HTTP_PORT = 80
+
+WEB_LISTEN_PORT = 6010
+WEB_AUTH_KEY = 'secret'
+
 
 HTML_HEADER = "<!DOCTYPE html>\
 <html>\
