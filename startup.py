@@ -8,8 +8,6 @@ then this script will abort.
 """
 import sys, subprocess, threading, time, logging
 
-from . import cfg_ports
-
 """
 RunawayProcess
 
@@ -60,9 +58,9 @@ class Process:
 
 	def uptime(self):
 		''' How long the process has been running. '''
-		is self.is_running():
+		if self.is_running():
 			return time.time() - self.startup_timestamp
-		else
+		else:
 			return 0
 
 	def restart(self):
@@ -80,39 +78,60 @@ class Process:
 
 
 def main():
-	led_control = Process('led_service.py')
+	led_control = Process('./svc_led.py')
 	led_control.start()
 	if not led_control.is_running():
-		logging.critical("Cannot start LED service. Aborting...")
+		logging.critical("[ Error ] Cannot start LED service. Aborting...")
 		return 0
 
-	logging.info("LED service started.")
+	logging.info("[ Ok ] LED service")
 
-	radio = Process('radio.py')
-	radio.start()
+	www = Process('./svc_web.py')
+	www.start()
+	logging.info("[ Ok ] WWW service")
+
+#	radio = Process('svc_radio.py')
+#	radio.start()
 	try:
 		while True:
+
 			if not led_control.is_running():
 				try:
-					logging.warning("LED not running. Restarting.")
+					logging.warning("[ Respawn ] LED service")
 					led_control.restart()
 				except RespawningProcess:
-					logging.critical("LED spawning too quickly. Aborting.")
+					logging.critical("[ Abort ] LED spawning too quickly")
 					try:
-						radio.stop()
-					except:
+						www.stop()
+#						radio.stop()
+					except Exception as e:
+						logging.critical("[ Error ] Can't stop: " + str(e))
 						pass
 					break
 	
-			if not radio.is_running():
+			if not www.is_running():
 				try:
-					logging.warning("Radio not running. Restarting.")
-					radio.restart()
+					logging.warning("[ Respawn ] WWW service")
+					www.restart()
 				except RespawningProcess:
-					logging.critical("Radio spawning too quickly. Aborting.")
+					logging.critical("[ Abort ] WWW spawning too quickly")
 					break
+
+#			if not radio.is_running():
+#				try:
+#					logging.warning("[ Respawn ] Radio service")
+#					radio.restart()
+#				except RespawningProcess:
+#					logging.critical("[ Abort ] Radio spawning too quickly")
+#					break
+
 	except Exception as e:
-		logging.critical("Some other error: " + str(e))
+		logging.critical("[ Error ] Some other error: " + str(e))
+	except KeyboardInterrupt as e:
+		logging.debug("Ctrl-C. Quitting.")
+		www.stop()
+		led_control.stop()
+		logging.debug("Done.")
 
 	return 0
 
