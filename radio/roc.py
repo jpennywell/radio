@@ -19,13 +19,16 @@ class RadioObjectCollection:
 	DialLedClient = None
 	PowerLedClient = None
 
-	def __init__(self):
+	def __init__(self, led_dial_address, led_power_address, www_address):
 		signal.signal(signal.SIGTERM, self._signal_term_handler)
 
 		self.DialView = dialview.DialView()
 
-		self.DialLedClient = Client(address=(led_cfg.LED_HOST, led_cfg.LED_DIAL_PORT))
-		self.PowerLedClient = Client(address=(led_cfg.LED_HOST, led_cfg.LED_POWER_PORT))
+		try:
+			self.DialLedClient = Client(address=led_dial_address)
+			self.PowerLedClient = Client(address=led_power_address)
+		except socket.error as e:
+			logging.warning("No LED service available: " + str(e))
 
 		self.VolumeKnob = pots.VolumePotReader(config.VOL_POT_ADC)
 		self.VolumeKnob.smooth_fac = 0.9
@@ -34,7 +37,10 @@ class RadioObjectCollection:
 
 		self.Player = rmpd.RadioMPDClient()
 
-		self.WebClient = Client(address=(www_cfg.WEB_HOST, www_cfg.WEB_LISTEN_PORT))
+		try:
+			self.WebClient = Client(address=www_address)
+		except socket.error as e:
+			logging.warning("No WWW service available: " + str(e))
 
 
 	def _signal_term_handler(self, signal, frame):
@@ -109,8 +115,8 @@ class RadioObjectCollection:
 				self.VolumeKnob.volume_cap = vol_adj * self.VolumeKnob.volume
 				self.VolumeKnob.volumize(self.VolumeKnob.volume_cap)
 
-				br = led_cfg.LED_MIN_DUTY if vol_adj == 0 else vol_adj * led_cfg.LED_DUTY_CYCLE
-				self.DialLedClient.send(['adjust_brightness', br])
+				if self.DialLedClient is not None:
+					self.DialLedClient.send(['adjust_brightness', vol_adj])
 
 
 				"""
@@ -143,7 +149,8 @@ class RadioObjectCollection:
 					"""
 					Update the web server
 					"""
-					self.WebClient.send(['html', self.Player.currentsong()])
+					if self.WebClient is not None:
+						self.WebClient.send(['html', self.Player.currentsong()])
 
 				except rmpd.CommandError as e:
 					logging.error(self.__class__.__name__ + "> mpd:Error load " + st_name + ":" + str(e))
@@ -170,8 +177,11 @@ class RadioObjectCollection:
 
 		try:
 			logging.debug(self.__class__.__name__ + "> Show info on leds.")
-			self.PowerLedClient.send('blink')
-			self.DialLedClient.send('off')
+			if self.PowerLedClient is not None:
+				self.PowerLedClient.send('blink')
+
+			if self.DialLedClient is not None:
+				self.DialLedClient.send('off')
 
 			logging.debug(self.__class__.__name__ + "> Stop MPD client")
 			self.Player.ready()
@@ -179,16 +189,10 @@ class RadioObjectCollection:
 			self.Player.close()
 			self.Player.disconnect()
 
-#			logging.debug(self.__class__.__name__ + "> Stop Web Server")
 
 		except Exception as e:
 			logging.critical(self.__class__.__name__ + "> ERROR! Can't stop a service: " + str(e))
 		finally:
-#			logging.debug(self.__class__.__name__ + "> GPIO cleanup")
-#			try:
-#				GPIO.cleanup()
-#			except RuntimeWarning:
-#				pass
 			logging.debug(self.__class__.__name__ + "> All cleanup done.")
 
 		if shutdown_system:

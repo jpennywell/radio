@@ -90,8 +90,8 @@ def main():
 	www.start()
 	logging.info("[ Ok ] WWW service")
 
-#	radio = Process('svc_radio.py')
-#	radio.start()
+	radio = Process('./svc_radio.py')
+	radio.start()
 	try:
 		while True:
 
@@ -103,7 +103,7 @@ def main():
 					logging.critical("[ Abort ] LED spawning too quickly")
 					try:
 						www.stop()
-#						radio.stop()
+						radio.stop()
 					except Exception as e:
 						logging.critical("[ Error ] Can't stop: " + str(e))
 						pass
@@ -117,13 +117,13 @@ def main():
 					logging.critical("[ Abort ] WWW spawning too quickly")
 					break
 
-#			if not radio.is_running():
-#				try:
-#					logging.warning("[ Respawn ] Radio service")
-#					radio.restart()
-#				except RespawningProcess:
-#					logging.critical("[ Abort ] Radio spawning too quickly")
-#					break
+			if not radio.is_running():
+				try:
+					logging.warning("[ Respawn ] Radio service")
+					radio.restart()
+				except RespawningProcess:
+					logging.critical("[ Abort ] Radio spawning too quickly")
+					break
 
 	except Exception as e:
 		logging.critical("[ Error ] Some other error: " + str(e))

@@ -22,10 +22,12 @@ try:
 	import radio_config as config
 
 	from hw import pots
-	from service import led_cfg
-	from service import www_cfg
 	from radio import rmpd
 	from radio import dialview
+	from radio import roc
+
+	from service import led_cfg
+	from service import www_cfg
 
 except RuntimeError as e:
 	logging.critical("Error loading an import: " + str(e))
@@ -59,7 +61,9 @@ def main(argv):
 		"""
 		Setup the radio object, and begin startup routine.
 		"""
-		Radio = RadioObjectCollection()
+		Radio = roc.RadioObjectCollection( (led_cfg.LED_HOST, led_cfg.LED_DIAL_PORT), \
+											(led_cfg.LED_HOST, led_cfg.LED_POWER_PORT), \
+											(www_cfg.WEB_HOST, www_cfg.WEB_LISTEN_PORT) )
 		logging.debug("main()> Startup Ok")
 
 		logging.debug("main()> DialLed fade in.")
