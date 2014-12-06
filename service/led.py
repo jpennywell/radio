@@ -66,16 +66,18 @@ class Led(service.Service):
 		self._discrete_change(False)
 
 
-	def adjust_brightness(self, b):
+	def adjust_brightness(self, p):
 		"""
-		Adjust brightness by a new duty cycle 'b'
+		Adjust brightness by a new duty cycle percentage 'p'
 		"""
 		if self.led_t:
 			self.stop()
 		if not self.pwm:
 			self.pwm = GPIO.PWM(self.pin, config.PWM_FREQ)
 		self.pwm.start(0)
-		self.pwm.ChangeDutyCycle(b)
+
+		br = config.LED_MIN_DUTY if p == 0 else p * config.LED_DUTY_CYCLE
+		self.pwm.ChangeDutyCycle(br)
 
 
 	def _start_thread(self, target_func):
