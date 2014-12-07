@@ -11,5 +11,5 @@ SPIMOSI = 24
 SPICS = 25
 
 ''' Tuning config '''
-GAP_FACTOR = 1.18	# Factor by which the tuning gaps should be larger than
+GAP_FACTOR = 1.4	# Factor by which the tuning gaps should be larger than
 			# the station radii. Default = 1.18 (18% larger)

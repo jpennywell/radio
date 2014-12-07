@@ -154,7 +154,7 @@ def main(argv):
 			"""
 			try:
 				tuner_knob.read_pot()
-			except pots.PotChange as change:
+			except pots.PotChange as pot_notif:
 				"""
 				Update volume scaling based on tuning distance.
 				Adjust dial brightness.
@@ -170,7 +170,6 @@ def main(argv):
 						r = tuner_knob.cfg_st_radius
 						d = abs(tuner_knob.tuning - tuner_knob.tuned_to())
 						vol_adj = round(0.5 * (1 + math.erf(3.64 - 4*d/r)), 2)
-						logging.info("Math: r="+str(r)+", d="+str(d)+",adj="+str(vol_adj))
 					except (ArithmeticError, FloatingPointError, ZeroDivisionError) as e:
 						logging.error("Math error: " + str(e))
 						vol_adj = 1.0
@@ -179,7 +178,6 @@ def main(argv):
 
 				vol_knob.volume_cap = vol_adj * vol_knob.volume
 				vol_knob.volumize(vol_knob.volume_cap)
-				logging.debug("Readjusting volume to " + str(vol_adj) + " of " + str(vol_knob.volume) + ": " + str(vol_knob.volume_cap))
 
 				if cl_dial_led is not None:
 					cl_dial_led.send(['adjust_brightness', vol_adj])
@@ -187,7 +185,7 @@ def main(argv):
 				"""
 				Update the MPD server.
 				"""
-				if change.is_new_station:
+				if pot_notif.is_new_station:
 					try:
 						(st_name, st_random, st_play_func) = tuner_knob.station_list[tuner_knob.SID]
 

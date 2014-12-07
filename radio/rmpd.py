@@ -1,5 +1,8 @@
 import mpd, logging, time
 
+class CommandError(mpd.CommandError):
+	pass
+
 """
 RadioMPDClient
 

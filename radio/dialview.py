@@ -28,9 +28,15 @@ class DialView:
 			r_mark = ""
 			if (fr == st_R):
 				if (st_L == tuned_freq):
-					l_mark = "<"
+					if (tuned_freq - st_L) < Tuner.cfg_st_radius:
+						l_mark = "{"
+					else:
+						l_mark = "<"
 				elif (st_R == tuned_freq):
-					r_mark = ">"
+					if (st_R - tuned_freq) < Tuner.cfg_st_radius:
+						r_mark = "}"
+					else:
+						r_mark = ">"
 
 				fr_list.append(l_mark + \
 								str(Tuner.tuning) + \

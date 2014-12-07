@@ -9,7 +9,7 @@ PotReader classes can raise this.
 Catch it to act on a changed pot value.
 """
 class PotChange(Exception):
-	def __init__(self, is_new_station = False)
+	def __init__(self, is_new_station = False):
 		self.is_new_station = is_new_station
 
 
@@ -330,7 +330,7 @@ class TunerPotReader(PotReader):
 				self.SID = new_station_id
 				raise PotChange(is_new_station = True)
 
-		raise PotChange
+		raise PotChange(is_new_station = False)
 
 # End of class TunerKnob
 
