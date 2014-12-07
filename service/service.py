@@ -1,4 +1,4 @@
-import threading
+import threading, logging
 from multiprocessing.connection import Listener, Client
 
 class Service(object):
@@ -32,10 +32,17 @@ class Service(object):
 	def _svc_loop(self):
 		conn = self.svc_listener.accept()
 		while self.svc_keepalive:
+
 			try:
 				msg = conn.recv()
 			except EOFError:
+				logging.warning("EOFError. This is usually because of the end of a received message. Restarting listener.")
+				listener.close()
+				conn.close()
+				self.svc_listener = Listener(address=(self.svc_host, self.svc_port))
+				conn = self.svc_listener.accept()
 				continue
+
 			if msg == 'QUIT':
 				conn.close()
 				break
@@ -46,16 +53,16 @@ class Service(object):
 					func = getattr(self, ACT)
 					if callable(func):
 						func(ARGS)
-				except Exception as e:
-					pass
+				except AttributeError as e:
+					logging.error("No callable function '" + ACT + "'")
 			else:
 				print(">> Incoming: " + str(msg))
 				try:
 					func = getattr(self, msg)
 					if callable(func):
 						func()
-				except Exception as e:
-					pass
+				except AttributeError as e:
+					logging.error("No callable function '" + ACT + "'")
 		#endwhile
 		self.svc_listener.close()
 		return 0
