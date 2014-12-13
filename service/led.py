@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 
-import math, logging, sys, threading, time
+import math, logging, sys, threading, time, random
 
 from multiprocessing.connection import Listener, Client
 from array import array
@@ -135,7 +135,7 @@ class Led(service.Service):
 		
 		while not self.led_t_stop_flag:
 			flicker = random.randrange(0,10,1)
-			if flicker <= POWER_FLICKER_FREQ:
+			if flicker <= config.POWER_FLICKER_FREQ:
 				dc = random.randrange(30, 100, 5)
 			else:
 				dc = 100

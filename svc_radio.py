@@ -219,6 +219,8 @@ def main(argv):
 						logging.error("> mpd:Error load " + st_name + ":" + str(e))
 					except ValueError as e:
 						logging.error("> ValueError on play " + st_name + ": " + str(e))
+					except IOError as e:
+						logging.error("Can't send data to web server")
 				#endif
 			#End of TunerKnob.read_pot()
 
@@ -230,7 +232,8 @@ def main(argv):
 				text_dial.display(vol_knob, tuner_knob)
 			time.sleep(0.25)
 		#end while
-
+	except IOError as e:
+		logging.error("Can't send data to listener: " + str(e))
 	except (KeyboardInterrupt, RadioCleanup):
 		"""
 		Do a cleanup of services and hardware.
