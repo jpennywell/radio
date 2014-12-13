@@ -104,14 +104,14 @@ class Led(service.Service):
 		self.stop(False)
 
 
-	def stop(self, do_stop = True):
+	def stop(self, do_thread_stop = True):
 		"""
 		Stop any led thread.
 		"""
 		if self.led_t:
 			# do_stop=False means we wait on the thread to finish
 			logging.info("Stopping...")
-			self.led_t_stop_flag = do_stop
+			self.led_t_stop_flag = do_thread_stop
 			self.led_t.join()
 
 			# Reset thread objects and flags

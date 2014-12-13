@@ -41,7 +41,7 @@ class PotReader:
 	"""
 	A smoothing factor for averaging-out read values.
 	(1 = ignore old values, 0 = ignore newly-read values)
-	default: 0.6
+	default: 0.8
 	"""
 	smooth_fac = 0.8
 
@@ -166,7 +166,7 @@ class PotReader:
 			pot_read = self._readadc(self.pot_pin, config.SPICLK, config.SPIMOSI, config.SPIMISO, config.SPICS)
 
 		smoothed_read = int(self.smooth_fac * pot_read + (1 - self.smooth_fac) * self.last_read)
-		self.last_read = smoothed_read
+		# self.last_read = smoothed_read #Done by self.update()
 		self.update(smoothed_read)
 
 		return smoothed_read
@@ -228,7 +228,8 @@ class TunerPotReader(PotReader):
 
 		For three stations, the dial will be separated as:
 			.5g r1r g r2r g r3r .5g,
-		so that
+		where g marks an untuned gap, and r is a tuned radius.
+		So then
 			num_gaps = num_st,
 			num_radii = 2 * num_st.
 

@@ -3,20 +3,18 @@ Configuration constants
 """
 ''' Debug level '''
 LOG_LEVEL='DEBUG' 	# Can be any of INFO, DEBUG, WARNING, ERROR, CRITICAL
-SHOW_DIAL=True
+SHOW_DIAL=True		# Print out a live dial view to the console.
 
 ''' Command used for shutting down the system '''
 SHUTDOWN_CMD = "sudo shutdown -h now"
 
-
+''' The pin numbers on the ADC for the pots '''
 VOL_POT_ADC = 2
 TUNE_POT_ADC = 1
-
 
 ''' MPD Client Information '''
 MPD_HOST = 'localhost'	# MPD host connection info
 MPD_PORT = 6600			# (default = localhost, 6600)
-
 
 ''' Volume Settings for shutdown '''
 LOW_VOL_TOLERANCE = 10	# If the volume is below this tolerance (default = 10), 
@@ -45,8 +43,8 @@ def my_station_play(mpd):
 def wjsv_queue(mpd):
 	import time
 	cur_hour = time.localtime()[3] - 6
-	mpd.play(cur_hour)
 	cur_time = time.localtime()[4]*60
+	mpd.play(cur_hour)
 	mpd.seekcur(cur_time)
 
 
