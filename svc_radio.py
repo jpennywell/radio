@@ -83,7 +83,7 @@ def main(argv):
 			logging.debug('Connecting to power Led service')
 			cl_power_led = Client( (led_cfg.LED_HOST, led_cfg.LED_POWER_PORT) )
 			logging.debug('Connecting to web service')
-			cl_web_server = Client( (www_cfg.WEB_HOST, www_cfg.WEB_LISTEN_PORT) )
+			cl_web_server = Client( (www_cfg.WEB_LISTEN_HOST, www_cfg.WEB_LISTEN_PORT) )
 		except socket.error as e:
 			logging.warning("Can't connect to a service: " + str(e))
 
@@ -189,6 +189,13 @@ def main(argv):
 					try:
 						(st_name, st_random, st_play_func) = tuner_knob.station_list[tuner_knob.SID]
 
+						player.ready()
+						player.clear()
+
+						logging.info("> Load " + st_name)
+						player.load(st_name)
+						player.random(1 if st_random else 0)
+
 						if (st_random):
 							sid = random.randrange(0,
 									len(player.playlist()) - 1,
@@ -196,13 +203,7 @@ def main(argv):
 						else:
 							sid = 0
 
-						logging.info("> Load " + st_name)
 						logging.info("> Playing " + str(sid))
-
-						player.ready()
-						player.clear()
-						player.load(st_name)
-						player.random(1 if st_random else 0)
 
 						if (callable(st_play_func)):
 							st_play_func(player)
@@ -272,9 +273,9 @@ def main(argv):
 #		logging.critical("main()> RuntimeError: " + str(e))
 #	except Exception as e:
 #		print(str(e))
-#	finally:
-#		logging.debug("main()> Finished. Return 0")
-#		return 0
+	finally:
+		logging.debug("main()> Finished. Return 0")
+		return 0
 
 #End of main()
 

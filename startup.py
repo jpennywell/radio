@@ -6,7 +6,12 @@ This will start up the LED service, followed by the radio service.
 If either quits, this script will restart them. If either respawns too quickly,
 then this script will abort.
 """
-import sys, subprocess, threading, time, logging
+import logging, os, subprocess, sys, threading, time
+
+if (os.getuid() != 0):
+	logging.critical("This process must be run as root. Exiting.")
+	sys.exit(0)
+
 
 """
 RunawayProcess

@@ -37,7 +37,7 @@ class Service(object):
 				msg = conn.recv()
 			except EOFError:
 				logging.warning("EOFError. This is usually because of the end of a received message. Restarting listener.")
-				listener.close()
+				self.svc_listener.close()
 				conn.close()
 				self.svc_listener = Listener(address=(self.svc_host, self.svc_port))
 				conn = self.svc_listener.accept()
