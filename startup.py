@@ -133,10 +133,10 @@ def main():
 	except Exception as e:
 		logging.critical("[ Error ] Some other error: " + str(e))
 	except KeyboardInterrupt as e:
-		logging.debug("Ctrl-C. Quitting.")
+		logging.debug("[ Startup ] Ctrl-C. Quitting.")
 		www.stop()
 		led_control.stop()
-		logging.debug("Done.")
+		logging.debug("[ Startup ] Done.")
 
 	return 0
 

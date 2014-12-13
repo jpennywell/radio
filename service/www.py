@@ -114,7 +114,7 @@ class RadioWebServer(service.Service):
 			target.write(config.HTML_FOOTER)
 			target.close()
 		except IOError as e:
-			logging.error("write_html_data()> Can't open index.html for write: [" + str(e) + "]")
+			logging.error(self.__class__.__name__ + "> Can't open index.html for write: [" + str(e) + "]")
 
 #End of RadioWebServer
 

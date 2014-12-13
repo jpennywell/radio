@@ -110,7 +110,7 @@ class Led(service.Service):
 		"""
 		if self.led_t:
 			# do_stop=False means we wait on the thread to finish
-			logging.info("Stopping...")
+			logging.info(self.__class__.__name__ + "> Stopping...")
 			self.led_t_stop_flag = do_thread_stop
 			self.led_t.join()
 

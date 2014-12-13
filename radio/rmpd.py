@@ -29,11 +29,11 @@ class RadioMPDClient(mpd.MPDClient):
 				break
 			except mpd.ConnectionError:
 				try:
-					logging.info("mpd: Lost connection - reconnect.")
+					logging.info(self.__class__.__name__ + "> mpd: Lost connection - reconnect.")
 					self.connect(self.rmpd_host, self.rmpd_port)
 					time.sleep(1)
 				except TypeError:
-					logging.error("mpd: Still can't connect.")
+					logging.error(self.__class__.__name__ + "> mpd: Still can't connect.")
 					sys.exit(0)
 
 # End of class RadioMPDClient

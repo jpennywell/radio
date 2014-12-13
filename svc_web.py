@@ -8,7 +8,7 @@ import service.www_cfg as config
 def main():
 	logging.basicConfig(level=logging.DEBUG)
 
-	logging.debug('Startup server')
+	logging.debug('[ Web ] Startup server')
 
 	server = www.RadioWebServer(config.WEB_HOST, config.WEB_HTTP_PORT)
 	server.svc_setup(port=config.WEB_LISTEN_PORT)
@@ -18,11 +18,11 @@ def main():
 		while True:
 			pass
 	except KeyboardInterrupt as e:
-		logging.debug('Ctrl-C. Quitting...')
+		logging.debug('[ Web ] Ctrl-C. Quitting...')
 		server.svc_cleanup()
 		server.stop()
 
-		logging.debug('Cleanup done.')
+		logging.debug('[ Web ] Cleanup done.')
 		return 0
 
 	return 0
@@ -30,5 +30,5 @@ def main():
 
 if __name__ == "__main__":
 	status = main()
-	logging.info('All Done')
+	logging.info('[ Web ] All Done')
 
