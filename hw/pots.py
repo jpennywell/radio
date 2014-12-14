@@ -1,9 +1,6 @@
 import RPi.GPIO as GPIO
 import os, spidev, math
-from radio_config import PWM_FREQ, LED_MIN_DUTY, LED_DUTY_CYCLE, \
-							LED_RAMP_START, LED_RAMP_RATE, LED_RAMP_CUTOFF, \
-							POWER_FLICKER_FREQ, GAP_FACTOR, \
-							SPICLK, SPIMISO, SPIMOSI, SPICS
+from . import config
 
 """
 PotChange
@@ -12,208 +9,9 @@ PotReader classes can raise this.
 Catch it to act on a changed pot value.
 """
 class PotChange(Exception):
-	pass
+	def __init__(self, is_new_station = False):
+		self.is_new_station = is_new_station
 
-
-"""
-Led
-
-Led interface class.
-
-This class has two 'modes' of operation: discrete & pwm.
-
-The discrete methods are on() and off().
-
-The pwm methods are threaded, except for adjust_brightness().
-
-"""
-class Led:
-	"""
-	Hardware pin.
-	"""
-	pin = -1
-
-	"""
-	Toggle on to use PWM to flicker, blink, fade, etc.
-	"""
-	pwm = False
-
-	"""
-	A thread variable for splitting-off fading, blinking, etc.
-	"""
-	led_t = False
-
-	"""
-	Set this flag to True to tell internal threads to stop.
-	"""
-	led_t_stop_flag = False
-
-
-	def __init__(self, pin):
-		"""
-		Setup GPIO for this pin.
-		"""
-		self.pin = pin
-		GPIO.setup(self.pin, GPIO.OUT)
-
-
-	def _discrete_change(self, toggle):
-		"""
-		Make a discrete (high-low/True-False) change to the led.
-		"""
-		if self.led_t:
-			self.stop()
-		GPIO.output(self.pin, toggle)
-
-
-	def on(self):
-		"""
-		Turn on the led. Stop any existing threads.
-		"""
-		self._discrete_change(True)
-
-
-	def off(self):
-		"""
-		Turn off the led. Stop any existing threads.
-		"""
-		self._discrete_change(False)
-
-
-	def adjust_brightness(self, b):
-		"""
-		Adjust brightness by a new duty cycle 'b'
-		"""
-		if self.led_t:
-			self.stop()
-		if not self.pwm:
-			self.pwm = GPIO.PWM(self.pin, PWM_FREQ)
-		self.pwm.start(0)
-		self.pwm.ChangeDutyCycle(b)
-
-
-	def _start_thread(self, target_func):
-		"""
-		Start a thread with function 'target_func'.
-		Used internally only.
-		"""
-		try:
-			if self.led_t:
-				self.stop()
-			if not self.pwm:
-				self.pwm = GPIO.PWM(self.pin, PWM_FREQ)
-				self.pwm.start(0)
-			self.led_t = threading.Thread(target=target_func)
-			self.led_t.start()
-		except:
-			pass
-
-
-	def wait_for_done(self):
-		"""
-		Halts action until the thread stops.
-		"""
-		self.stop(False)
-
-
-	def stop(self, do_stop = True):
-		"""
-		Stop any led thread.
-		"""
-		if self.led_t:
-			self.led_t_stop_flag = do_stop
-			self.led_t.join()
-
-			self.led_t = False
-			self.led_t_stop_flag = False
-			self.pwm = False
-
-
-	def flicker(self):
-		"""
-		Call a thread to flicker the led.
-		"""
-		self._start_thread(self._flicker_t_func)
-
-
-	def _flicker_t_func(self):
-		"""
-		The flicker function called by 'self.flicker()'
-		"""
-		self.pwm.ChangeDutyCycle(100)
-		
-		while not self.led_t_stop_flag:
-			flicker = random.randrange(0,10,1)
-			if flicker <= POWER_FLICKER_FREQ:
-				dc = random.randrange(30, 100, 5)
-			else:
-				dc = 100
-			self.pwm.ChangeDutyCycle(dc)
-			time.sleep(0.1)
-
-
-	def blink(self):
-		"""
-		Call a thread to blink the led.
-		"""
-		self._start_thread(self._blink_t_func)
-
-
-	def _blink_t_func(self):
-		"""
-		The blink function called by 'self.blink()'
-		"""
-		count = 0
-		while count < 2:
-			if self.led_t_stop_flag:
-				break
-			self.pwm.ChangeDutyCycle(0)
-			time.sleep(0.5)
-			self.pwm.ChangeDutyCycle(LED_DUTY_CYCLE)
-			time.sleep(0.5)
-			count += 1
-
-
-	def fade_up(self):
-		"""
-		Call a thread to fade in the led.
-		"""
-		self._start_thread(self._fade_up_t_func)
-
-
-	def _fade_up_t_func(self):
-		"""
-		The fade-in function called by 'self.fade_up()'
-		"""
-		led_ramp_fac = LED_RAMP_CUTOFF + 1
-		dc = 0
-		while led_ramp_fac > LED_RAMP_CUTOFF:
-			if self.led_t_stop_flag:
-				break
-			dc += 1
-			led_ramp_fac = 1. + math.exp(LED_RAMP_START - dc/LED_RAMP_RATE)
-			self.pwm.ChangeDutyCycle(LED_DUTY_CYCLE/led_ramp_fac)
-			time.sleep(0.1)
-
-
-	def fade_down(self):
-		"""
-		Call a thread to fade out the led.
-		"""
-		self._start_thread(self._fade_down_t_func)
-
-
-	def _fade_down_t_func(self):
-		"""
-		The fade-out function called by 'self.fade_down()'
-		"""
-		for dc in range(int(LED_DUTY_CYCLE), 0, -5):
-			if self.led_t_stop_flag:
-				break
-			self.pwm.ChangeDutyCycle(dc)
-			time.sleep(0.2)
-
-# End of class Led
 
 
 """
@@ -243,8 +41,9 @@ class PotReader:
 	"""
 	A smoothing factor for averaging-out read values.
 	(1 = ignore old values, 0 = ignore newly-read values)
+	default: 0.8
 	"""
-	smooth_fac = 0.6
+	smooth_fac = 0.8
 
 	"""
 	Use a SPI interface instead of the ADC.
@@ -261,7 +60,19 @@ class PotReader:
 		"""
 		Sets the pin to use.
 		"""
+		GPIO.setwarnings(False)
+
+		GPIO.setmode(GPIO.BCM)
+
+		GPIO.setup(config.SPIMOSI, GPIO.OUT)
+		GPIO.setup(config.SPIMISO, GPIO.IN)
+		GPIO.setup(config.SPICLK, GPIO.OUT)
+		GPIO.setup(config.SPICS, GPIO.OUT)
+
 		self.pot_pin = pin
+
+		if config.ENABLE_SPI:
+			self.enable_spi()
 
 
 	def update(self, pot_val):
@@ -352,10 +163,10 @@ class PotReader:
 		if self.use_spi:
 			pot_read = self._readspi(self.pot_pin)
 		else:
-			pot_read = self._readadc(self.pot_pin, SPICLK, SPIMOSI, SPIMISO, SPICS)
+			pot_read = self._readadc(self.pot_pin, config.SPICLK, config.SPIMOSI, config.SPIMISO, config.SPICS)
 
 		smoothed_read = int(self.smooth_fac * pot_read + (1 - self.smooth_fac) * self.last_read)
-		self.last_read = smoothed_read
+		# self.last_read = smoothed_read #Done by self.update()
 		self.update(smoothed_read)
 
 		return smoothed_read
@@ -417,7 +228,8 @@ class TunerPotReader(PotReader):
 
 		For three stations, the dial will be separated as:
 			.5g r1r g r2r g r3r .5g,
-		so that
+		where g marks an untuned gap, and r is a tuned radius.
+		So then
 			num_gaps = num_st,
 			num_radii = 2 * num_st.
 
@@ -437,8 +249,8 @@ class TunerPotReader(PotReader):
 		"""
 
 		num_st = len(self.station_list)
-		self.cfg_st_radius = 1023 / (num_st * (GAP_FACTOR + 2))
-		self.cfg_st_gap = self.cfg_st_radius * GAP_FACTOR
+		self.cfg_st_radius = 1023 / (num_st * (config.GAP_FACTOR + 2))
+		self.cfg_st_gap = self.cfg_st_radius * config.GAP_FACTOR
 
 		for t in range(0, len(self.station_list), 1):
 			fr = (0.5 * self.cfg_st_gap + self.cfg_st_radius) + \
@@ -517,7 +329,9 @@ class TunerPotReader(PotReader):
 			# New station
 			if new_station_id != self.SID:
 				self.SID = new_station_id
-				raise PotChange
+				raise PotChange(is_new_station = True)
+
+		raise PotChange(is_new_station = False)
 
 # End of class TunerKnob
 
