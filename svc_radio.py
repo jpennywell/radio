@@ -216,7 +216,7 @@ def main(argv):
 						if cl_web_server is not None:
 							songdata = player.currentsong()
 							status = player.status()
-							senddata = {'':''}
+							senddata = dict()
 							senddata['artist'] = songdata['artist']
 							senddata['album'] = songdata['album']
 							senddata['title'] = songdata['title']
