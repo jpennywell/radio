@@ -27,15 +27,7 @@ HTML_HEADER = "<!DOCTYPE html>\
 <h1>Now Playing</h1>\
 <div class='well'>"
 
-HTML_TABLE = "</div>\
-<div class='panel panel-default'>\
-<div class='panel-heading'><h3 class='panel-title'>Detailed Information</h3></div>\
-<div class='panel-body'>\
-<table class='table'>\
-"
-
-HTML_FOOTER = "</table>\
-</div>\
+HTML_FOOTER = "</div>\
 </div>\
 </body>\
 </html>"

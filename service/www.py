@@ -91,25 +91,13 @@ class RadioWebServer(service.Service):
 			target = open('index.html', 'w')
 			target.write(config.HTML_HEADER)
 
-			artist = ''
-			album = ''
-			title = ''
+			mins = int(data['elapsed']/60)
+			secs = int(data['elapsed'] - mins*60)
 
-			if 'artist' in data:
-				artist = data['artist']
-			if 'album' in data:
-				album = data['album']
-			if 'title' in data:
-				title = data['title']
-
-			target.write('<h2>Artist: ' + artist + '</h2>')
-			target.write('<h2>Album: ' + album + '</h2>')
-			target.write('<h2>Song: ' + title + '</h2>')
-
-			target.write(config.HTML_TABLE)
-
-			for k in data:
-				target.write("<tr><td>" + str(k) + "</td><td>" + str(data[k]) + "</td></tr>\n")
+			target.write('<h2>Artist: ' + data['artist'] + '</h2>')
+			target.write('<h2>Album: ' + data['album'] + '</h2>')
+			target.write('<h2>Song: ' + data['title'] + '</h2>')
+			target.write('<h2>Elapsed: ' + mins + ':' + secs + '</h2>')
 
 			target.write(config.HTML_FOOTER)
 			target.close()

@@ -214,7 +214,16 @@ def main(argv):
 						Update the web server
 						"""
 						if cl_web_server is not None:
-							cl_web_server.send(['html', player.currentsong()])
+							songdata = player.currentsong()
+							status = player.status()
+							senddata = {'':''}
+							senddata['artist'] = songdata['artist']
+							senddata['album'] = songdata['album']
+							senddata['title'] = songdata['title']
+							senddata['file'] = songdata['file']
+							senddata['elapsed'] = status['elapsed']
+							senddata['time'] = songdata['time']
+							cl_web_server.send(['html', senddata])
 
 					except rmpd.CommandError as e:
 						logging.error("[ Radio ] mpd:Error load " + st_name + ":" + str(e))
