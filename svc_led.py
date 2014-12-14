@@ -15,23 +15,23 @@ def main():
 
 	logging.basicConfig(level=logging.DEBUG)
 
-	logging.debug('Startup leds.')
+	logging.debug('[ Led ] Startup leds.')
 
 	DialLed = led.Led(pin=led_dial_pin)
 	DialLed.svc_setup(port=led_dial_port)
 	DialLed.svc_loop()
-	logging.debug('One Loop begun.')
+	logging.debug('[ Led ] One Loop begun.')
 
 	PowerLed = led.Led(pin=led_power_pin)
 	PowerLed.svc_setup(port=led_power_port)
 	PowerLed.svc_loop()
-	logging.debug('Two Loop begun.')
+	logging.debug('[ Led ] Two Loop begun.')
 
 	try:
 		while True:
 			pass
 	except KeyboardInterrupt as e:
-		logging.info("Ctrl-C: Quitting: " + str(e))
+		logging.info("[ Led ] Ctrl-C: Quitting: " + str(e))
 		DialLed.svc_cleanup()
 		DialLed.stop()
 
@@ -40,7 +40,7 @@ def main():
 
 		GPIO.cleanup()
 
-		logging.debug("main() done")
+		logging.debug("[ Led ] main() done")
 		return 0
 
 	return 0
@@ -48,5 +48,5 @@ def main():
 
 if __name__ == "__main__":
 	status = main()
-	logging.info('all done')
+	logging.info('[ Led ] all done')
 

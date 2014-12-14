@@ -31,11 +31,11 @@ try:
 	from service import www_cfg
 
 except RuntimeError as e:
-	logging.critical("Error loading an import: " + str(e))
+	logging.critical("[ Radio ] Error loading an import: " + str(e))
 	sys.exit(0)
 
 if (os.getuid() != 0):
-	logging.critical("This process must be run as root. Exiting.")
+	logging.critical("[ Radio ] This process must be run as root. Exiting.")
 	sys.exit(0)
 
 try:
@@ -46,7 +46,7 @@ try:
 #	logging.basicConfig(filename='radio.log', level=getattr(logging, config.LOG_LEVEL))
 	logging.basicConfig(level=getattr(logging, config.LOG_LEVEL))
 except IOError as e:
-	logging.critical("Can't open log file for write: " + str(e))
+	logging.critical("[ Radio ] Can't open log file for write: " + str(e))
 
 
 
@@ -71,49 +71,49 @@ def main(argv):
 		"""
 #		signal.signal(signal.SIGTERM, radio_cleanup)
 
-		logging.debug('Startup begun')
+		logging.debug('[ Radio ] Startup begun')
 
-		logging.debug('DialView started.')
+		logging.debug('[ Radio ] DialView started.')
 		text_dial = dialview.DialView()
 
 
 		try:
-			logging.debug('Connecting to dial Led service')
+			logging.debug('[ Radio ] Connecting to dial Led service')
 			cl_dial_led = Client( (led_cfg.LED_HOST, led_cfg.LED_DIAL_PORT) )
-			logging.debug('Connecting to power Led service')
+			logging.debug('[ Radio ] Connecting to power Led service')
 			cl_power_led = Client( (led_cfg.LED_HOST, led_cfg.LED_POWER_PORT) )
-			logging.debug('Connecting to web service')
-			cl_web_server = Client( (www_cfg.WEB_HOST, www_cfg.WEB_LISTEN_PORT) )
+			logging.debug('[ Radio ] Connecting to web service')
+			cl_web_server = Client( (www_cfg.WEB_LISTEN_HOST, www_cfg.WEB_LISTEN_PORT) )
 		except socket.error as e:
-			logging.warning("Can't connect to a service: " + str(e))
+			logging.warning("[ Radio ] Can't connect to a service: " + str(e))
 
-		logging.debug('Creating volume knob')
+		logging.debug('[ Radio ] Creating volume knob')
 		vol_knob = pots.VolumePotReader(config.VOL_POT_ADC)
 		vol_knob.smooth_fac = 0.9
 
-		logging.debug('Creating tuning knob')
+		logging.debug('[ Radio ] Creating tuning knob')
 		tuner_knob = pots.TunerPotReader(config.TUNE_POT_ADC, config.STATION_SET)
 
-		logging.debug('Starting MPD client')
+		logging.debug('[ Radio ] Starting MPD client')
 		player = rmpd.RadioMPDClient(config.MPD_HOST, config.MPD_PORT)
 
-		logging.debug("main()> Startup Ok")
+		logging.debug("[ Radio ] Startup Ok")
 
-		logging.debug("main()> DialLed fade in.")
+		logging.debug("[ Radio ] DialLed fade in.")
 		cl_dial_led.send('fade_up')
 
-		logging.debug("main()> PowerLed flicker on.")
+		logging.debug("[ Radio ] PowerLed flicker on.")
 		cl_power_led.send('flicker')
 
 		logging.debug(tuner_knob.freq_list)
 		logging.debug(tuner_knob.station_list)
 
-		logging.debug("main()> Waiting for dial led to finish...")
+		logging.debug("[ Radio ] Waiting for dial led to finish...")
 		cl_dial_led.send('wait_for_done')
 
 		player.ready()
 
-		logging.debug("main()> Main loop.")
+		logging.debug("[ Radio ] Main loop.")
 
 		while True:
 			"""
@@ -133,13 +133,13 @@ def main(argv):
 				"""
 				if (vol_knob.volume <= config.LOW_VOL_TOLERANCE):
 					if (low_vol_start == -1):
-						logging.info("> Shutdown timer started.")
+						logging.info("[ Radio ] Shutdown timer started.")
 						low_vol_start = time.time()
 					else:
 						low_vol_delta = time.time() - low_vol_start
 
 						if low_vol_delta >= config.TIME_FOR_POWER_OFF:
-							logging.info("> Volume low - Shutting down...")
+							logging.info("[ Radio ]  Volume low - Shutting down...")
 							do_system_shutdown = True
 							raise RadioCleanup
 							return 0
@@ -171,7 +171,7 @@ def main(argv):
 						d = abs(tuner_knob.tuning - tuner_knob.tuned_to())
 						vol_adj = round(0.5 * (1 + math.erf(3.64 - 4*d/r)), 2)
 					except (ArithmeticError, FloatingPointError, ZeroDivisionError) as e:
-						logging.error("Math error: " + str(e))
+						logging.error("[ Radio ] Math error: " + str(e))
 						vol_adj = 1.0
 				else:
 					vol_adj = 0
@@ -189,6 +189,13 @@ def main(argv):
 					try:
 						(st_name, st_random, st_play_func) = tuner_knob.station_list[tuner_knob.SID]
 
+						player.ready()
+						player.clear()
+
+						logging.info("[ Radio ] Load " + st_name)
+						player.load(st_name)
+						player.random(1 if st_random else 0)
+
 						if (st_random):
 							sid = random.randrange(0,
 									len(player.playlist()) - 1,
@@ -196,13 +203,7 @@ def main(argv):
 						else:
 							sid = 0
 
-						logging.info("> Load " + st_name)
-						logging.info("> Playing " + str(sid))
-
-						player.ready()
-						player.clear()
-						player.load(st_name)
-						player.random(1 if st_random else 0)
+						logging.info("[ Radio ] Playing " + str(sid))
 
 						if (callable(st_play_func)):
 							st_play_func(player)
@@ -213,14 +214,23 @@ def main(argv):
 						Update the web server
 						"""
 						if cl_web_server is not None:
-							cl_web_server.send(['html', player.currentsong()])
+							songdata = player.currentsong()
+							status = player.status()
+							senddata = dict()
+							senddata['artist'] = songdata['artist']
+							senddata['album'] = songdata['album']
+							senddata['title'] = songdata['title']
+							senddata['file'] = songdata['file']
+							senddata['elapsed'] = status['elapsed']
+							senddata['time'] = songdata['time']
+							cl_web_server.send(['html', senddata])
 
 					except rmpd.CommandError as e:
-						logging.error("> mpd:Error load " + st_name + ":" + str(e))
+						logging.error("[ Radio ] mpd:Error load " + st_name + ":" + str(e))
 					except ValueError as e:
-						logging.error("> ValueError on play " + st_name + ": " + str(e))
+						logging.error("[ Radio ]  ValueError on play " + st_name + ": " + str(e))
 					except IOError as e:
-						logging.error("Can't send data to web server")
+						logging.error("[ Radio ] Can't send data to web server")
 				#endif
 			#End of TunerKnob.read_pot()
 
@@ -233,30 +243,30 @@ def main(argv):
 			time.sleep(0.25)
 		#end while
 	except IOError as e:
-		logging.error("Can't send data to listener: " + str(e))
+		logging.error("[ Radio ] Can't send data to listener: " + str(e))
 	except (KeyboardInterrupt, RadioCleanup):
 		"""
 		Do a cleanup of services and hardware.
 		"""
-		logging.debug("> Cleaning up...")
+		logging.debug("[ Radio ] Cleaning up...")
 
 		try:
-			logging.debug("> Show info on leds.")
+			logging.debug("[ Radio ] Show info on leds.")
 			if cl_power_led is not None:
 				cl_power_led.send('blink')
 
 			if cl_dial_led is not None:
 				cl_dial_led.send('off')
 
-			logging.debug("> Stop MPD client")
+			logging.debug("[ Radio ] Stop MPD client")
 			player.ready()
 			player.stop() 
 			player.close()
 			player.disconnect()
 		except Exception as e:
-			logging.critical("> ERROR! Can't stop a service: " + str(e))
+			logging.critical("[ Radio ] ERROR! Can't stop a service: " + str(e))
 		finally:
-			logging.debug("> All cleanup done.")
+			logging.debug("[ Radio ] All cleanup done.")
 
 		if do_system_shutdown:
 			os.system(SHUTDOWN_CMD)
@@ -272,9 +282,9 @@ def main(argv):
 #		logging.critical("main()> RuntimeError: " + str(e))
 #	except Exception as e:
 #		print(str(e))
-#	finally:
-#		logging.debug("main()> Finished. Return 0")
-#		return 0
+	finally:
+		logging.debug("[ Radio ] main() Finished. Return 0")
+		return 0
 
 #End of main()
 
@@ -283,6 +293,6 @@ def main(argv):
 Run the program.
 """
 if __name__ == "__main__":
-	logging.info("Calling main()")
+	logging.info("[ Radio ] Calling main()")
 	status = main(sys.argv)
 	os._exit(status)

@@ -91,13 +91,27 @@ class RadioWebServer(service.Service):
 			target = open('index.html', 'w')
 			target.write(config.HTML_HEADER)
 
-			for k in data:
-				target.write("<tr><td>" + str(k) + "</td><td>" + str(data[k]) + "</td></tr>\n")
+			emptydata = {'artist':'Unknown', 'album':'Unknown', 'title':'Unknown', 'file':'Unknown', 'elapsed':0}
+							
+			for k in ('artist', 'album', 'title', 'file', 'elapsed'):
+				if k not in data:
+					data[k] = emptydata[k]
+
+			total_secs = int(data['elapsed'])
+			hours = total_secs // 3600
+			mins = (total_secs - 3600*hours)//60
+			secs = total_secs - 3600*hours - mins*60
+			time = "{:0>2d}:{:0>2d}:{:0>2d}".format(int(hours),int(mins),int(secs))
+
+			target.write('<h2>Artist: ' + data['artist'] + '</h2>')
+			target.write('<h2>Album: ' + data['album'] + '</h2>')
+			target.write('<h2>Song: ' + data['title'] + '</h2>')
+			target.write('<h2>Elapsed: ' + time + '</h2>')
 
 			target.write(config.HTML_FOOTER)
 			target.close()
 		except IOError as e:
-			logging.error("write_html_data()> Can't open index.html for write: [" + str(e) + "]")
+			logging.error(self.__class__.__name__ + "> Can't open index.html for write: [" + str(e) + "]")
 
 #End of RadioWebServer
 

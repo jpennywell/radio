@@ -36,8 +36,8 @@ class Service(object):
 			try:
 				msg = conn.recv()
 			except EOFError:
-				logging.warning("EOFError. This is usually because of the end of a received message. Restarting listener.")
-				listener.close()
+				logging.warning(self.__class__.__name__ + "> EOFError. This is usually because of the end of a received message. Restarting listener.")
+				self.svc_listener.close()
 				conn.close()
 				self.svc_listener = Listener(address=(self.svc_host, self.svc_port))
 				conn = self.svc_listener.accept()
@@ -54,7 +54,7 @@ class Service(object):
 					if callable(func):
 						func(ARGS)
 				except AttributeError as e:
-					logging.error("No callable function '" + ACT + "'")
+					logging.error(self.__class__.__name__ + "> No callable function '" + ACT + "'")
 			else:
 				print(">> Incoming: " + str(msg))
 				try:
@@ -62,7 +62,7 @@ class Service(object):
 					if callable(func):
 						func()
 				except AttributeError as e:
-					logging.error("No callable function '" + ACT + "'")
+					logging.error(self.__class__.__name__ + "> No callable function '" + ACT + "'")
 		#endwhile
 		self.svc_listener.close()
 		return 0
