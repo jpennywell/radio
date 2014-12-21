@@ -3,7 +3,7 @@
 # http://blog.gocept.com/2011/08/04/shutting-down-an-httpserver/
 #
 
-import BaseHTTPServer, logging, threading, urllib2, sqlite3
+import BaseHTTPServer, cgi, logging, threading, urllib2, sqlite3
 
 from . import service
 from . import www_cfg as config
@@ -60,7 +60,7 @@ class RadioWebServer(service.Service):
 		self.port = port
 
 		try:
-			self.server = StoppableServer((self.host, self.port),	IndexOnlyHandler)
+			self.server = StoppableServer((self.host, self.port), CustomHandler)
 			self.server_t = threading.Thread(target=self.server.serve_until_shutdown)
 			self.server_t.daemon = True
 			self.server_t.start()
@@ -121,15 +121,22 @@ IndexOnlyHandler
 
 A GET request handler that returns only the index.html file.
 """
-class IndexOnlyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def do_GET(self):
 		"""
 		Instead of serving up any requested file, serve up index.html.
 		"""
 		try:
-			source = open('index.html', 'r')
-			html = '\n'.join(source.readlines())
-			source.close()
+			if self.path == '/config':
+				form = cgi.FieldStorage(
+							fp=self.rfile,
+							headers=self.headers,
+							environ={'REQUEST_METHOD':'POST',
+									'CONTENT_TYPE':self.headers['Content-type']})
+			else:
+				source = open('index.html', 'r')
+				html = '\n'.join(source.readlines())
+				source.close()
 		except IOError:
 			logging.error(self.__class__.__name__ + "> Can't read index.html")
 			html = "Can't read index.html"
@@ -141,16 +148,4 @@ class IndexOnlyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write(html)
 
 #End of IndexOnlyHandler
-
-
-"""
-ConfigHandler
-"""
-class ConfigHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-	def do_POST(self):
-		try:
-			pass
-		except:
-			pass
-
 
