@@ -135,7 +135,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 								headers=self.headers,
 								environ={'REQUEST_METHOD':'POST',
 										'CONTENT_TYPE':self.headers['Content-type']})
-					db_conn = sql.connect('config.db')
+					db_conn = sql.connect('../config.db')
 
 					with db_conn:
 						cur = db_conn.cursor()
