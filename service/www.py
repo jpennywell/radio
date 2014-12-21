@@ -3,7 +3,7 @@
 # http://blog.gocept.com/2011/08/04/shutting-down-an-httpserver/
 #
 
-import BaseHTTPServer, logging, threading, urllib2
+import BaseHTTPServer, logging, threading, urllib2, sqlite3
 
 from . import service
 from . import www_cfg as config
@@ -141,5 +141,16 @@ class IndexOnlyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.wfile.write(html)
 
 #End of IndexOnlyHandler
+
+
+"""
+ConfigHandler
+"""
+class ConfigHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+	def do_POST(self):
+		try:
+			pass
+		except:
+			pass
 
 
