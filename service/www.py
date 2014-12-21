@@ -3,7 +3,8 @@
 # http://blog.gocept.com/2011/08/04/shutting-down-an-httpserver/
 #
 
-import BaseHTTPServer, cgi, logging, threading, urllib2, sqlite3
+import BaseHTTPServer, cgi, logging, threading, urllib2
+import sqlite3 as sql
 
 from . import service
 from . import www_cfg as config
@@ -128,11 +129,32 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		"""
 		try:
 			if self.path == '/config':
-				form = cgi.FieldStorage(
-							fp=self.rfile,
-							headers=self.headers,
-							environ={'REQUEST_METHOD':'POST',
-									'CONTENT_TYPE':self.headers['Content-type']})
+				try:
+					form = cgi.FieldStorage(
+								fp=self.rfile,
+								headers=self.headers,
+								environ={'REQUEST_METHOD':'POST',
+										'CONTENT_TYPE':self.headers['Content-type']})
+					db_conn = sql.connect('config.db')
+
+					with db_conn:
+						cur = db_conn.cursor()
+
+						cur.execute("SELECT * FROM config")
+						while True:
+							row = cur.fetchone()
+							if row == None:
+								break
+
+						cur.execute("SELECT * FROM playlists")
+						while True:
+							row = cur.fetchone()
+							if row == None:
+								break
+				except:
+					form = {}
+
+				
 			else:
 				source = open('index.html', 'r')
 				html = '\n'.join(source.readlines())
