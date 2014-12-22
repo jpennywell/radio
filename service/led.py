@@ -9,7 +9,6 @@ from array import array
 from . import service
 from . import led_cfg as config
 
-
 """
 Led
 

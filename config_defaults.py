@@ -1,4 +1,4 @@
-allowed_values = {
+defaults = {
 'LOG_LEVEL': (('INFO','DEBUG','WARNING','ERROR','CRITICAL'), 'DEBUG'),
 'SHOW_DIAL': (bool, False),
 'SHUTDOWN_CMD': (str, 'sudo shutdown -h now'),
@@ -21,6 +21,7 @@ allowed_values = {
 'POWER_FLICKER_FREQ': (int, 1),
 'WEB_LISTEN_HOST': (str, 'localhost'),
 'WEB_LISTEN_PORT': (int, 6010),
+'WEB_INTERFACE': (str, 'eth0'),
 'WEB_HTTP_PORT': (int, 80),
 'ENABLE_SPI': (bool, False),
 'SPICLK': (int, 18),

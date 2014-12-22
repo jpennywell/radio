@@ -4,11 +4,12 @@
 #
 
 import BaseHTTPServer, cgi, logging, threading, urllib2
-import sqlite3 as sql
+import socket, fcntl, struct
+import sqlite3
 
 from . import service
 from . import www_cfg as config
-from . import www_config_values as form_values
+from . import config_defaults
 
 def html_input(name, value, placeholder=''):
 	return "<input class='form-control' type='text' name='{}' value='{}' placeholder='{}'>".format(name, value, placeholder)
@@ -78,12 +79,16 @@ class RadioWebServer(service.Service):
 		self.host = host
 		self.port = port
 
+		self.config = {}
+
 		try:
 			self.server = StoppableServer((self.host, self.port), CustomHandler)
 			self.server_t = threading.Thread(target=self.server.serve_until_shutdown)
 			self.server_t.daemon = True
 			self.server_t.start()
 			logging.info(self.__class__.__name__ + "> WWW service running at " + self.host + ':' + str(self.port))
+		except sqlite3.OperationalError as e:
+			logging.critical(self.__class__.__name__ + "> Can't load config.db properly; " + str(e))
 		except Exception as e:
 			logging.critical(self.__class__.__name__ + "> Can't start web server: " + str(e))
 
@@ -159,7 +164,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					except Exception as e:
 						logging.error("No form? " + str(e))
 
-					db_conn = sql.connect('config.db')
+					db_conn = sqlite3.connect('config.db')
 
 					with db_conn:
 						cur = db_conn.cursor()
@@ -200,9 +205,15 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							if row == None:
 								break
 
-							(opt_name, opt_val) = row
+							(opt_name_u, opt_val_u) = row
+							opt_name = str(opt_name_u)
 
-							(opt_type,opt_default) = form_values.allowed_values[opt_name]
+							(opt_type,opt_default) = config_defaults.defaults[opt_name]
+							if type(opt_type) is type:
+								opt_val = opt_type(opt_val_u)
+							else:
+								opt_val = str(opt_val_u)
+
 							html += "<tr><td>" + opt_name + "</td>"
 							if opt_type is bool:
 								html += "<td>" + html_checkbox(opt_name, is_checked=(int(opt_val) == 1)) + "</td>"
@@ -214,7 +225,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							html += "<td><a href='#' class='btn btn-default'><span class='glyphicon glyphicon-refresh'></span> Default</a></td></tr>"
 						html += "</table></div></form>"
 						html += config.HTML_FOOTER
-				except Exception as e:
+				except IOError as e:
 					html = "Nope: " + str(e)
 				
 			else:

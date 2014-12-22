@@ -1,18 +1,3 @@
-import socket, fcntl, struct
-def get_ip_address(ifname):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    return socket.inet_ntoa(fcntl.ioctl(
-        s.fileno(),
-        0x8915,  # SIOCGIFADDR
-        struct.pack('256s', ifname[:15])
-    )[20:24])
-
-WEB_HOST = get_ip_address('eth0')
-WEB_HTTP_PORT = 80
-
-WEB_LISTEN_HOST = 'localhost'
-WEB_LISTEN_PORT = 6010
-
 HTML_HEADER = "<!DOCTYPE html>\
 <!DOCTYPE html>\
 <html lang='en'>\
