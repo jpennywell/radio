@@ -28,5 +28,7 @@ defaults = {
 'SPIMISO': (int, 23),
 'SPIMOSI': (int, 24),
 'SPICS': (int, 25),
-'GAP_FACTOR': (float, 1.4)
+'GAP_FACTOR': (float, 1.4),
+'LED_POWER_PIN': (int, 17),
+'LED_DIAL_PIN': (int, 27)
 }

@@ -4,7 +4,6 @@ import logging
 
 import service.www as www
 import service.option_loader as OL
-import sqlite3 as sql
 
 
 import socket, fcntl, struct
