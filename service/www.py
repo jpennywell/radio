@@ -8,6 +8,24 @@ import sqlite3 as sql
 
 from . import service
 from . import www_cfg as config
+from . import www_config_values as form_values
+
+def html_input(name, value, placeholder=''):
+	return "<input class='form-control' type='text' name='{}' value='{}' placeholder='{}'>".format(name, value, placeholder)
+
+def html_checkbox(name, value=1, is_checked=False):
+	check_text = "checked='checked'" if is_checked else ""
+	return "<input type='checkbox' name='{}' value='{}' {}>".format(name, value, check_text)
+
+def html_select(name, opt_list, active_elt=None):
+	html = "<select class='form-control' name='{}'>"
+	for elt in opt_list:
+		selected_text = "selected='selected'" if elt == active_elt else ""
+		html += "<option value='{}' {}>{}</option>".format(elt, selected_text, elt)
+	html += "</select>"
+	return html
+
+
 
 """
 StoppableServer
@@ -130,30 +148,74 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		try:
 			if self.path == '/config':
 				try:
-					form = cgi.FieldStorage(
-								fp=self.rfile,
-								headers=self.headers,
-								environ={'REQUEST_METHOD':'POST',
-										'CONTENT_TYPE':self.headers['Content-type']})
-					db_conn = sql.connect('../config.db')
+					html = config.HTML_HEADER
+
+					try:
+						form = cgi.FieldStorage(
+									fp=self.rfile,
+									headers=self.headers,
+									environ={'REQUEST_METHOD':'POST',
+											'CONTENT_TYPE':self.headers['Content-type']})
+					except Exception as e:
+						logging.error("No form? " + str(e))
+
+					db_conn = sql.connect('config.db')
 
 					with db_conn:
 						cur = db_conn.cursor()
 
-						cur.execute("SELECT * FROM config")
-						while True:
-							row = cur.fetchone()
-							if row == None:
-								break
-
 						cur.execute("SELECT * FROM playlists")
+						html += "<div class='panel panel-default'><div class='panel-heading''>"
+						html += "<div class='input-group'>"
+						html += "<span class='input-group-addon'>Radio Stations</span>"
+						html += "<span class='input-group-btn'><a class='btn btn-success'><span class='glyphicon glyphicon-ok'></span> Save</a></span></div>"
+						html += "</div><div class='panel-body'><i>Play function must be defined in the www_cfg.py file on the server.</i></div>"
+						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+						html += "<table class='table'>"
+						html += "<tr><th>Playlist Name</th><th>URL/File</th><th>Randomize</th><th>Play function</th></tr>"
 						while True:
 							row = cur.fetchone()
 							if row == None:
 								break
-				except:
-					form = {}
+							(pl_name, pl_url, pl_random, pl_func) = row
 
+							html += "<tr><td>" + html_input('name', pl_name, 'Required') + "</td>"
+							html += "<td>" + html_input('url', pl_url, 'Required') + "</td>"
+							html += "<td>" + html_checkbox('random', is_checked=(int(pl_random) == 1)) + "</td>"
+							html += "<td>" + html_input('play_function', pl_func) + "</td></tr>"
+
+						html += "</table></div></form></div>"
+
+						cur.execute("SELECT * FROM options")
+						html += "<div class='panel panel-default'><div class='panel-heading''>"
+						html += "<div class='input-group'>"
+						html += "<span class='input-group-addon'>Radio Configuration</span>"
+						html += "<span class='input-group-btn'><a class='btn btn-success'><span class='glyphicon glyphicon-ok'></span> Save</a></span></div>"
+						html += "</div>"
+						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+						html += "<table class='table'>"
+						html += "<tr><th>Option</th><th>Setting</th><th></th></tr>"
+						while True:
+							row = cur.fetchone()
+							if row == None:
+								break
+
+							(opt_name, opt_val) = row
+
+							(opt_type,opt_default) = form_values.allowed_values[opt_name]
+							html += "<tr><td>" + opt_name + "</td>"
+							if opt_type is bool:
+								html += "<td>" + html_checkbox(opt_name, is_checked=(int(opt_val) == 1)) + "</td>"
+							elif type(opt_type) is tuple:
+								html += "<td>" + html_select(opt_name, opt_type, opt_val) + "</td>"
+							else:
+								html += "<td>" + html_input(opt_name, opt_val, str(opt_default)) + "</td>"
+
+							html += "<td><a href='#' class='btn btn-default'><span class='glyphicon glyphicon-refresh'></span> Default</a></td></tr>"
+						html += "</table></div></form>"
+						html += config.HTML_FOOTER
+				except Exception as e:
+					html = "Nope: " + str(e)
 				
 			else:
 				source = open('index.html', 'r')
