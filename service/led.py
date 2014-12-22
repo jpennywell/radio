@@ -7,7 +7,6 @@ from multiprocessing.connection import Listener, Client
 from array import array
 
 from . import service
-from . import led_cfg as config
 from . import option_loader as OL
 
 """
