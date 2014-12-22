@@ -136,6 +136,7 @@ def main():
 		logging.debug("[ Startup ] Ctrl-C. Quitting.")
 		www.stop()
 		led_control.stop()
+		radio.stop()
 		logging.debug("[ Startup ] Done.")
 
 	return 0
