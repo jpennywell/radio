@@ -7,8 +7,7 @@ from multiprocessing.connection import Listener, Client
 from array import array
 
 from . import service
-from . import led_cfg as config
-
+from . import option_loader as OL
 
 """
 Led
@@ -34,6 +33,8 @@ class Led(service.Service):
 	''' Set this flag to True to tell internal threads to stop. '''
 	led_t_stop_flag = False
 
+	''' OptionsLoader instance '''
+	options = None
 
 	def __init__(self, pin):
 		"""
@@ -41,6 +42,8 @@ class Led(service.Service):
 		"""
 		self.pin = pin
 		GPIO.setup(self.pin, GPIO.OUT)
+
+		self.options = OL.OptionLoader('config.db')
 
 
 	def _discrete_change(self, toggle):
@@ -73,10 +76,10 @@ class Led(service.Service):
 		if self.led_t:
 			self.stop()
 		if not self.pwm:
-			self.pwm = GPIO.PWM(self.pin, config.PWM_FREQ)
+			self.pwm = GPIO.PWM(self.pin, self.options.fetch(PWM_FREQ))
 		self.pwm.start(0)
 
-		br = config.LED_MIN_DUTY if p == 0 else p * config.LED_DUTY_CYCLE
+		br = self.options.fetch(LED_MIN_DUTY) if p == 0 else p * self.options.fetch(LED_DUTY_CYCLE)
 		self.pwm.ChangeDutyCycle(br)
 
 
@@ -89,7 +92,7 @@ class Led(service.Service):
 			if self.led_t:
 				self.stop()
 			if not self.pwm:
-				self.pwm = GPIO.PWM(self.pin, config.PWM_FREQ)
+				self.pwm = GPIO.PWM(self.pin, self.options.fetch(PWM_FREQ))
 				self.pwm.start(0)
 			self.led_t = threading.Thread(target=target_func)
 			self.led_t.start()
@@ -135,7 +138,7 @@ class Led(service.Service):
 		
 		while not self.led_t_stop_flag:
 			flicker = random.randrange(0,10,1)
-			if flicker <= config.POWER_FLICKER_FREQ:
+			if flicker <= self.options.fetch(POWER_FLICKER_FREQ):
 				dc = random.randrange(30, 100, 5)
 			else:
 				dc = 100
@@ -160,7 +163,7 @@ class Led(service.Service):
 				break
 			self.pwm.ChangeDutyCycle(0)
 			time.sleep(0.5)
-			self.pwm.ChangeDutyCycle(config.LED_DUTY_CYCLE)
+			self.pwm.ChangeDutyCycle(self.options.fetch(LED_DUTY_CYCLE))
 			time.sleep(0.5)
 			count += 1
 
@@ -176,14 +179,14 @@ class Led(service.Service):
 		"""
 		The fade-in function called by 'self.fade_up()'
 		"""
-		led_ramp_fac = config.LED_RAMP_CUTOFF + 1
+		led_ramp_fac = self.options.fetch(LED_RAMP_CUTOFF) + 1
 		dc = 0
-		while led_ramp_fac > config.LED_RAMP_CUTOFF:
+		while led_ramp_fac > self.options.fetch(LED_RAMP_CUTOFF):
 			if self.led_t_stop_flag:
 				break
 			dc += 1
-			led_ramp_fac = 1. + math.exp(config.LED_RAMP_START - dc/config.LED_RAMP_RATE)
-			self.pwm.ChangeDutyCycle(config.LED_DUTY_CYCLE/led_ramp_fac)
+			led_ramp_fac = 1. + math.exp(self.options.fetch(LED_RAMP_START) - dc/self.options.fetch(LED_RAMP_RATE))
+			self.pwm.ChangeDutyCycle(self.options.fetch(LED_DUTY_CYCLE)/led_ramp_fac)
 			time.sleep(0.1)
 
 
@@ -198,7 +201,7 @@ class Led(service.Service):
 		"""
 		The fade-out function called by 'self.fade_down()'
 		"""
-		for dc in range(int(config.LED_DUTY_CYCLE), 0, -5):
+		for dc in range(int(self.options.fetch(LED_DUTY_CYCLE)), 0, -5):
 			if self.led_t_stop_flag:
 				break
 			self.pwm.ChangeDutyCycle(dc)

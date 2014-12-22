@@ -1,1 +1,1 @@
-__all__ = ['service', 'led', 'www']
+__all__ = ['service', 'config_defaults', 'option_loader', 'pots', 'led', 'www']
