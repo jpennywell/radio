@@ -1,6 +1,5 @@
 import RPi.GPIO as GPIO
 import os, spidev, math
-#from . import config
 from . import option_loader as OL
 
 """

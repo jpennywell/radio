@@ -102,8 +102,6 @@ class RadioWebServer(service.Service):
 		self.host = host
 		self.port = port
 
-		self.config = {}
-
 		try:
 			self.server = StoppableServer((self.host, self.port), CustomHandler)
 			self.server_t = threading.Thread(target=self.server.serve_until_shutdown)
@@ -136,7 +134,7 @@ class RadioWebServer(service.Service):
 	def html(self, data):
 		try:
 			target = open('index.html', 'w')
-			target.write(config.HTML_HEADER)
+			target.write(HTML_HEADER)
 
 			emptydata = {'artist':'Unknown', 'album':'Unknown', 'title':'Unknown', 'file':'Unknown', 'elapsed':0}
 							
@@ -155,7 +153,7 @@ class RadioWebServer(service.Service):
 			target.write('<h2>Song: ' + data['title'] + '</h2>')
 			target.write('<h2>Elapsed: ' + time + '</h2>')
 
-			target.write(config.HTML_FOOTER)
+			target.write(HTML_FOOTER)
 			target.close()
 		except IOError as e:
 			logging.error(self.__class__.__name__ + "> Can't open index.html for write: [" + str(e) + "]")
@@ -176,7 +174,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		try:
 			if self.path == '/config':
 				try:
-					html = config.HTML_HEADER
+					html = HTML_HEADER
 
 					try:
 						form = cgi.FieldStorage(
@@ -247,7 +245,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 							html += "<td><a href='#' class='btn btn-default'><span class='glyphicon glyphicon-refresh'></span> Default</a></td></tr>"
 						html += "</table></div></form>"
-						html += config.HTML_FOOTER
+						html += HTML_FOOTER
 				except IOError as e:
 					html = "Nope: " + str(e)
 				
