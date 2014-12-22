@@ -17,18 +17,14 @@ Todo:
 """
 
 try:
-	import logging, os, sys, time, signal, math, random, socket
-
-	import radio_config as config
+	import logging, os, sys, time, signal, math, random, socket, sqlite3
 
 	from multiprocessing.connection import Client
 
-	from hw import pots
-	from radio import rmpd
-	from radio import dialview
-
-	from service import led_cfg
-	from service import www_cfg
+	import service.option_loader as OL
+	import service.pots as pots
+	import radio.rmpd as rmpd
+	import radio.dialview as dialview
 
 except RuntimeError as e:
 	logging.critical("[ Radio ] Error loading an import: " + str(e))
@@ -38,13 +34,14 @@ if (os.getuid() != 0):
 	logging.critical("[ Radio ] This process must be run as root. Exiting.")
 	sys.exit(0)
 
+opt_ldr = OL.OptionLoader('config.db')
+
 try:
 	# Reset/truncate the log file
 	with open('radio.log', 'w'):
 		pass
 
-#	logging.basicConfig(filename='radio.log', level=getattr(logging, config.LOG_LEVEL))
-	logging.basicConfig(level=getattr(logging, config.LOG_LEVEL))
+	logging.basicConfig(level=getattr(logging, opt_ldr.fetch(LOG_LEVEL)))
 except IOError as e:
 	logging.critical("[ Radio ] Can't open log file for write: " + str(e))
 
@@ -79,23 +76,28 @@ def main(argv):
 
 		try:
 			logging.debug('[ Radio ] Connecting to dial Led service')
-			cl_dial_led = Client( (led_cfg.LED_HOST, led_cfg.LED_DIAL_PORT) )
+			cl_dial_led = Client( (opt_ldr.fetch('LED_HOST'), opt_ldr.fetch('LED_DIAL_PORT')) )
 			logging.debug('[ Radio ] Connecting to power Led service')
-			cl_power_led = Client( (led_cfg.LED_HOST, led_cfg.LED_POWER_PORT) )
+			cl_power_led = Client( (opt_ldr.fetch('LED_HOST'), opt_ldr.fetch('LED_POWER_PORT')) )
 			logging.debug('[ Radio ] Connecting to web service')
-			cl_web_server = Client( (www_cfg.WEB_LISTEN_HOST, www_cfg.WEB_LISTEN_PORT) )
+			cl_web_server = Client( (opt_ldr.fetch('WEB_LISTEN_HOST'), opt_ldr.fetch('WEB_LISTEN_PORT')) )
 		except socket.error as e:
 			logging.warning("[ Radio ] Can't connect to a service: " + str(e))
 
 		logging.debug('[ Radio ] Creating volume knob')
-		vol_knob = pots.VolumePotReader(config.VOL_POT_ADC)
+		vol_knob = pots.VolumePotReader(opt_ldr.fetch('VOL_POT_ADC'))
 		vol_knob.smooth_fac = 0.9
 
 		logging.debug('[ Radio ] Creating tuning knob')
-		tuner_knob = pots.TunerPotReader(config.TUNE_POT_ADC, config.STATION_SET)
+		con = sqlite3.connect('config.db')
+		with con:
+			cur = con.cursor()
+			cur.execute("SELECT * FROM playlists")
+			station_set = cur.fetchall()
+		tuner_knob = pots.TunerPotReader(opt_ldr.fetch('TUNE_POT_ADC'), station_set)
 
 		logging.debug('[ Radio ] Starting MPD client')
-		player = rmpd.RadioMPDClient(config.MPD_HOST, config.MPD_PORT)
+		player = rmpd.RadioMPDClient(opt_ldr.fetch('MPD_HOST'), opt_ldr.fetch('MPD_PORT'))
 
 		logging.debug("[ Radio ] Startup Ok")
 
@@ -131,14 +133,14 @@ def main(argv):
 				If it's running, see for how long, and
 				shutdown if it's past the cutoff.
 				"""
-				if (vol_knob.volume <= config.LOW_VOL_TOLERANCE):
+				if (vol_knob.volume <= opt_ldr.fetch('LOW_VOL_TOLERANCE')):
 					if (low_vol_start == -1):
 						logging.info("[ Radio ] Shutdown timer started.")
 						low_vol_start = time.time()
 					else:
 						low_vol_delta = time.time() - low_vol_start
 
-						if low_vol_delta >= config.TIME_FOR_POWER_OFF:
+						if low_vol_delta >= opt_ldr.fetch('TIME_FOR_POWER_OFF'):
 							logging.info("[ Radio ]  Volume low - Shutting down...")
 							do_system_shutdown = True
 							raise RadioCleanup
@@ -238,7 +240,7 @@ def main(argv):
 			"""
 			3.	Finish the loop with a delay, and print any debug.
 			"""
-			if config.SHOW_DIAL:
+			if opt_ldr.fetch('SHOW_DIAL'):
 				text_dial.display(vol_knob, tuner_knob)
 			time.sleep(0.25)
 		#end while
