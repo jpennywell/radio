@@ -34,6 +34,9 @@ HTML_FOOTER = "</div>\
 </body>\
 </html>"
 
+def html_hidden(name, value):
+	return "<input type='hidden' name='{}' value='{}'/>".format(name,value)
+
 def html_input(name, value, placeholder=''):
 	return "<input class='form-control' type='text' name='{}' value='{}' placeholder='{}'>".format(name, value, placeholder)
 
@@ -49,6 +52,8 @@ def html_select(name, opt_list, active_elt=None):
 	html += "</select>"
 	return html
 
+def html_panel(title, message, divclass='panel-primary'):
+	return "<div class='panel " + divclass + "'><div class='panel-heading'><div class='panel-title'>"+title+"</div></div><div class='panel-body'>" + message + "</div></div>"
 
 
 """
@@ -167,6 +172,9 @@ IndexOnlyHandler
 A GET request handler that returns only the index.html file.
 """
 class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+	def do_POST(self):
+		self.do_GET()
+
 	def do_GET(self):
 		"""
 		Instead of serving up any requested file, serve up index.html.
@@ -182,8 +190,51 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 									headers=self.headers,
 									environ={'REQUEST_METHOD':'POST',
 											'CONTENT_TYPE':self.headers['Content-type']})
+						if 'table_is_options' in form.keys():
+							try:
+								for key in form.keys():
+									sql = "UPDATE options SET value=? WHERE option='"+str(key)+"'"
+									db_conn = sqlite3.connect('config.db')
+									with db_conn:
+										cur = db_conn.cursor()
+										cur.execute(sql, (form.getvalue(key),))
+								html += html_panel("Success", "Options saved.", 'panel-success')
+							except sqlite3.OperationalError as e:
+								html += html_panel("DB Error", "Could not save data: " + str(e), 'panel-danger')
+						else:
+							try:
+								if 'do_delete' in form.keys():
+									sql = 'DELETE FROM playlists WHERE id=?'
+									args = [form.getvalue('id'),]
+									db_conn = sqlite3.connect('config.db')
+									with db_conn:
+										cur = db_conn.cursor()
+										cur.execute(sql, args)
+									html += html_panel("Success", "Playlist deleted.", 'panel-warning')
+								else:
+									if form.getvalue('id') == 'NEW':
+										sql = 'INSERT INTO playlists (name,url,random,play_function) VALUES (?,?,?,?)'
+										args = [form.getvalue('name'),
+												form.getvalue('url'),
+												form.getvalue('random'),
+												form.getvalue('play_function')]
+									else:
+										sql = 'UPDATE playlists SET name=?, url=?, random=?, play_function=? WHERE id=?'
+										args = [form.getvalue('name'),
+												form.getvalue('url'),
+												form.getvalue('random'),
+												form.getvalue('play_function'),
+												form.getvalue('id')]
+									db_conn = sqlite3.connect('config.db')
+									with db_conn:
+										cur = db_conn.cursor()
+										cur.execute(sql, args)
+									html += html_panel("Success", "Playlist saved.", 'panel-success')
+							except sqlite3.OperationalError as e:
+								html += html_panel("DB Error", "Could not save data: " + str(e), 'panel-danger')
+							
 					except Exception as e:
-						logging.error("No form? " + str(e))
+						logging.error("No form data: " + str(e))
 
 					db_conn = sqlite3.connect('config.db')
 
@@ -192,33 +243,50 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 						cur.execute("SELECT * FROM playlists")
 						html += "<div class='panel panel-default'><div class='panel-heading''>"
-						html += "<div class='input-group'>"
-						html += "<span class='input-group-addon'>Radio Stations</span>"
-						html += "<span class='input-group-btn'><a class='btn btn-success'><span class='glyphicon glyphicon-ok'></span> Save</a></span></div>"
+						html += "Radio Stations"
 						html += "</div><div class='panel-body'><i>Play function must be defined in the www_cfg.py file on the server.</i></div>"
-						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
 						html += "<table class='table'>"
 						html += "<tr><th>Playlist Name</th><th>URL/File</th><th>Randomize</th><th>Play function</th></tr>"
 						while True:
 							row = cur.fetchone()
 							if row == None:
 								break
-							(pl_name, pl_url, pl_random, pl_func) = row
+							(pl_id, pl_name, pl_url, pl_random, pl_func) = row
+							if pl_url is None:
+								pl_url = ''
+							if pl_random is None:
+								pl_random = 0
+							if pl_func is None:
+								pl_func = ''
 
-							html += "<tr><td>" + html_input('name', pl_name, 'Required') + "</td>"
+							html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+							html += "<tr><td>" + html_hidden('id', pl_id) + html_input('name', pl_name, 'Required') + "</td>"
 							html += "<td>" + html_input('url', pl_url, 'Required') + "</td>"
-							html += "<td>" + html_checkbox('random', is_checked=(int(pl_random) == 1)) + "</td>"
-							html += "<td>" + html_input('play_function', pl_func) + "</td></tr>"
+							html += "<td>" + html_checkbox('random', is_checked=pl_random) + "</td>"
+							html += "<td>" + html_input('play_function', pl_func) + "</td>"
+							html += "<td><button type='submit' class='btn btn-default'><span class='glyphicon glyphicon-ok'></span></button></td>"
+							html += "</div></form>"
+							html += "<form role='form' method='POST' action='/config'>"
+							html += html_hidden('id', pl_id) + html_hidden('do_delete', 'do_delete')
+							html += "<td><button type='submit' class='btn btn-warning'><span class='glyphicon glyphicon-trash'></span></button></td></tr></form>"
 
-						html += "</table></div></form></div>"
+						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+						html += "<tr><td>" + html_hidden('id', 'NEW') + html_input('name', '', 'Required') + "</td>"
+						html += "<td>" + html_input('url', '', 'Required') + "</td>"
+						html += "<td>" + html_checkbox('random', 0) + "</td>"
+						html += "<td>" + html_input('play_function', '') + "</td>"
+						html += "<td colspan='2'><button type='submit' class='btn btn-success'><span class='glyphicon glyphicon-plus'></span> Add new station</buton</td>"
+						html += "</tr></div></form>"
+						html += "</table></div>"
 
 						cur.execute("SELECT * FROM options")
+						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+						html += html_hidden('table_is_options', 'options')
 						html += "<div class='panel panel-default'><div class='panel-heading''>"
 						html += "<div class='input-group'>"
 						html += "<span class='input-group-addon'>Radio Configuration</span>"
-						html += "<span class='input-group-btn'><a class='btn btn-success'><span class='glyphicon glyphicon-ok'></span> Save</a></span></div>"
+						html += "<span class='input-group-btn'><button type='submit' class='btn btn-success'><span class='glyphicon glyphicon-ok'></span> Save</button></span></div>"
 						html += "</div>"
-						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
 						html += "<table class='table'>"
 						html += "<tr><th>Option</th><th>Setting</th><th></th></tr>"
 						while True:
@@ -243,7 +311,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							else:
 								html += "<td>" + html_input(opt_name, opt_val, str(opt_default)) + "</td>"
 
-							html += "<td><a href='#' class='btn btn-default'><span class='glyphicon glyphicon-refresh'></span> Default</a></td></tr>"
+							html += "<td><!--<a href='#' class='btn btn-default'><span class='glyphicon glyphicon-refresh'></span> Default</a>--></td></tr>"
 						html += "</table></div></form>"
 						html += HTML_FOOTER
 				except IOError as e:
