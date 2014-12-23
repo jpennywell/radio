@@ -18,7 +18,7 @@ HTML_HEADER = "<!DOCTYPE html>\
 <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css'>\
 <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css'>\
 <meta name='viewport' content='width=device-width, initial-scale=1'>\
-<style type='text/css'>.input-group-addon{background:white !important;}</style>\
+<style type='text/css'>table.table { font-size: 2em; }</style>\
 </head>\
 <body>\
 <div class='container'>\
@@ -37,8 +37,8 @@ HTML_FOOTER = "</div>\
 def html_hidden(name, value):
 	return "<input type='hidden' name='{}' value='{}'/>".format(name,value)
 
-def html_input(name, value, placeholder=''):
-	return "<input class='form-control' type='text' name='{}' value='{}' placeholder='{}'>".format(name, value, placeholder)
+def html_input(name, value, placeholder='', extra_data=''):
+	return "<input class='form-control' type='text' name='{}' value='{}' placeholder='{}' {}>".format(name, value, placeholder, extra_data)
 
 def html_checkbox(name, value=1, is_checked=False):
 	check_text = "checked='checked'" if is_checked else ""
@@ -52,8 +52,11 @@ def html_select(name, opt_list, active_elt=None):
 	html += "</select>"
 	return html
 
+def html_glyph(glyph_class):
+	return "<span class='glyphicon glyphicon-{}'></span> ".format(glyph_class)
+
 def html_panel(title, message, divclass='panel-primary'):
-	return "<div class='panel " + divclass + "'><div class='panel-heading'><div class='panel-title'>"+title+"</div></div><div class='panel-body'>" + message + "</div></div>"
+	return "<div class='panel {}'><div class='panel-heading'><div class='panel-title'>{}</div></div><div class='panel-body'>{}</div></div>".format(divclass, title, message)
 
 
 """
@@ -153,10 +156,21 @@ class RadioWebServer(service.Service):
 			secs = total_secs - 3600*hours - mins*60
 			time = "{:0>2d}:{:0>2d}:{:0>2d}".format(int(hours),int(mins),int(secs))
 
-			target.write('<h2>Artist: ' + data['artist'] + '</h2>')
-			target.write('<h2>Album: ' + data['album'] + '</h2>')
-			target.write('<h2>Song: ' + data['title'] + '</h2>')
-			target.write('<h2>Elapsed: ' + time + '</h2>')
+			target.write("<div class='panel panel-primary'><div class='panel-heading'>Now Playing</div><table class='table'>")
+			target.write("<tr><td width='30%'>{} Artist:</td><td>{}</td></<tr>"
+							.format(html_glyph('user'), data['artist'])
+						)
+			target.write("<tr><td>{} Album:</td><td>{}</td></<tr>"
+							.format(html_glyph('th-list'), data['album'])
+						)
+			target.write("<tr><td>{} Title:</td><td>{}</td></<tr>"
+							.format(html_glyph('music'), data['title'])
+						)
+			target.write("<tr><td>{} Elapsed:</td><td>{}</td></<tr>"
+							.format(html_glyph('time'), time)
+						)
+
+			target.write("</table></div>")
 
 			target.write(HTML_FOOTER)
 			target.close()
