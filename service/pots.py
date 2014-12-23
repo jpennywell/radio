@@ -1,6 +1,6 @@
 import RPi.GPIO as GPIO
 import os, spidev, math
-from . import config
+from . import option_loader as OL
 
 """
 PotChange
@@ -45,16 +45,14 @@ class PotReader:
 	"""
 	smooth_fac = 0.8
 
-	"""
-	Use a SPI interface instead of the ADC.
-	"""
+	''' Use a SPI interface instead of the ADC. '''
 	use_spi = False
 
-	"""
-	The SPI device object.
-	"""
+	''' The SPI device object. '''
 	spi = False
 
+	''' OptionLoader instance '''
+	options = None
 
 	def __init__(self, pin):
 		"""
@@ -64,14 +62,16 @@ class PotReader:
 
 		GPIO.setmode(GPIO.BCM)
 
-		GPIO.setup(config.SPIMOSI, GPIO.OUT)
-		GPIO.setup(config.SPIMISO, GPIO.IN)
-		GPIO.setup(config.SPICLK, GPIO.OUT)
-		GPIO.setup(config.SPICS, GPIO.OUT)
+		self.options = OL.OptionLoader('config.db')
+
+		GPIO.setup(self.options.fetch(SPIMOSI), GPIO.OUT)
+		GPIO.setup(self.options.fetch(SPIMISO), GPIO.IN)
+		GPIO.setup(self.options.fetch(SPICLK), GPIO.OUT)
+		GPIO.setup(self.options.fetch(SPICS), GPIO.OUT)
 
 		self.pot_pin = pin
 
-		if config.ENABLE_SPI:
+		if self.options.fetch(ENABLE_SPI):
 			self.enable_spi()
 
 
@@ -163,7 +163,7 @@ class PotReader:
 		if self.use_spi:
 			pot_read = self._readspi(self.pot_pin)
 		else:
-			pot_read = self._readadc(self.pot_pin, config.SPICLK, config.SPIMOSI, config.SPIMISO, config.SPICS)
+			pot_read = self._readadc(self.pot_pin, self.options.fetch(SPICLK), self.options.fetch(SPIMOSI), self.options.fetch(SPIMISO), self.options.fetch(SPICS))
 
 		smoothed_read = int(self.smooth_fac * pot_read + (1 - self.smooth_fac) * self.last_read)
 		# self.last_read = smoothed_read #Done by self.update()
@@ -249,8 +249,8 @@ class TunerPotReader(PotReader):
 		"""
 
 		num_st = len(self.station_list)
-		self.cfg_st_radius = 1023 / (num_st * (config.GAP_FACTOR + 2))
-		self.cfg_st_gap = self.cfg_st_radius * config.GAP_FACTOR
+		self.cfg_st_radius = 1023 / (num_st * (self.options.fetch(GAP_FACTOR) + 2))
+		self.cfg_st_gap = self.cfg_st_radius * self.options.fetch(GAP_FACTOR)
 
 		for t in range(0, len(self.station_list), 1):
 			fr = (0.5 * self.cfg_st_gap + self.cfg_st_radius) + \

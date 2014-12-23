@@ -3,12 +3,7 @@
 import RPi.GPIO as GPIO
 import logging
 import service.led as led
-
-led_power_pin = 17
-led_dial_pin = 27
-
-led_power_port = 6000
-led_dial_port = 6001
+import service.option_loader as OL
 
 def main():
 #	GPIO.setmode(GPIO.BCM)
@@ -17,13 +12,15 @@ def main():
 
 	logging.debug('[ Led ] Startup leds.')
 
-	DialLed = led.Led(pin=led_dial_pin)
-	DialLed.svc_setup(port=led_dial_port)
+	opt_ldr = OL.OptionLoader('config.db')
+
+	DialLed = led.Led(pin=opt_ldr.fetch('LED_DIAL_PIN'))
+	DialLed.svc_setup(port=opt_ldr.fetch('LED_DIAL_PORT'))
 	DialLed.svc_loop()
 	logging.debug('[ Led ] One Loop begun.')
 
-	PowerLed = led.Led(pin=led_power_pin)
-	PowerLed.svc_setup(port=led_power_port)
+	PowerLed = led.Led(pin=opt_ldr.fetch('LED_POWER_PIN'))
+	PowerLed.svc_setup(port=opt_ldr.fetch('LED_POWER_PORT'))
 	PowerLed.svc_loop()
 	logging.debug('[ Led ] Two Loop begun.')
 
