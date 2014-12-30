@@ -1,6 +1,5 @@
-## Need to make this function work for every <input> box.
-
 $(document).ready(function() {
+
 	function save_option(o_name, o_val) {
 		$.ajax({
 			cache: false,
@@ -8,11 +7,17 @@ $(document).ready(function() {
 			type: 'GET',
 			content-type: 'application/json',
 			dataType: 'json',
-			data: JSON.stringify({'input': o_val})
+			data: JSON.stringify({'name': o_name, 'value': o_val})
 		}).done(function(json) {
-			$(o_name).addClass('success');
+			$(o_name).addClass('has-success');
+			setTimeout(function() {
+				$(o_name).removeClass('has-success');
+			}, 3000);
 		}).error(function(json) {
-			$(o_name).addClass('error');
+			$(o_name).addClass('has-error');
+			setTimeout(function() {
+				$(o_name).removeClass('has-error');
+			}, 3000);
 		});
 	}
 
@@ -21,4 +26,5 @@ $(document).ready(function() {
 			save_option(this.attr('name'), this.val());
 		}
 	});
+
 });
