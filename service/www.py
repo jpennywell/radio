@@ -19,6 +19,7 @@ HTML_HEADER = "<!DOCTYPE html>\
 <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css'>\
 <meta name='viewport' content='width=device-width, initial-scale=1'>\
 <style type='text/css'>table.table { font-size: 2em; }</style>\
+<script src='www/jquery-2.1.3.min.js'></script>\
 </head>\
 <body>\
 <div class='container'>\
@@ -273,18 +274,18 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 							if pl_func is None:
 								pl_func = ''
 
-							html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+							html += "<form name='station_form_'" + pl_id + " role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
 							html += "<tr><td>" + html_hidden('id', pl_id) + html_input('name', pl_name, 'Required') + "</td>"
 							html += "<td>" + html_input('url', pl_url, 'Required') + "</td>"
 							html += "<td>" + html_checkbox('random', is_checked=pl_random) + "</td>"
 							html += "<td>" + html_input('play_function', pl_func) + "</td>"
 							html += "<td><button type='submit' class='btn btn-default'><span class='glyphicon glyphicon-ok'></span></button></td>"
 							html += "</div></form>"
-							html += "<form role='form' method='POST' action='/config'>"
+							html += "<form name='station_delete_form_"+ pl_id +"' role='form' method='POST' action='/config'>"
 							html += html_hidden('id', pl_id) + html_hidden('do_delete', 'do_delete')
 							html += "<td><button type='submit' class='btn btn-warning'><span class='glyphicon glyphicon-trash'></span></button></td></tr></form>"
 
-						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+						html += "<form name='station_add_form' role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
 						html += "<tr><td>" + html_hidden('id', 'NEW') + html_input('name', '', 'Required') + "</td>"
 						html += "<td>" + html_input('url', '', 'Required') + "</td>"
 						html += "<td>" + html_checkbox('random', 0) + "</td>"
@@ -294,7 +295,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						html += "</table></div>"
 
 						cur.execute("SELECT * FROM options")
-						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+						html += "<form name='option_form' role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
 						html += html_hidden('table_is_options', 'options')
 						html += "<div class='panel panel-default'><div class='panel-heading''>"
 						html += "<div class='input-group'>"
@@ -332,9 +333,9 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					html = "Nope: " + str(e)
 				
 			else:
-				source = open('index.html', 'r')
-				html = '\n'.join(source.readlines())
-				source.close()
+#				source = open('index.html', 'r')
+#				html = '\n'.join(source.readlines())
+#				source.close()
 		except IOError:
 			logging.error(self.__class__.__name__ + "> Can't read index.html")
 			html = "Can't read index.html"
