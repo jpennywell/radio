@@ -1,3 +1,5 @@
+## Need to make this function work for every <input> box.
+
 $(document).ready(function() {
 	function save_option() {
 		$.ajax({
