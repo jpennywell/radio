@@ -173,7 +173,7 @@ class RadioWebServer(service.Service):
 		logging.debug(self.__class__.__name__ + "> ...thread done.")
 
 
-	def html(self, data):
+	def indexhtml(self, data):
 		try:
 			target = open('index.html', 'w')
 			target.write(HTML_HEADER)
@@ -188,7 +188,7 @@ class RadioWebServer(service.Service):
 			hours = total_secs // 3600
 			mins = (total_secs - 3600*hours)//60
 			secs = total_secs - 3600*hours - mins*60
-			time = "{:0>2d}:{:0>2d}:{:0>2d}".format(int(hours),int(mins),int(secs))
+			time = "{:0>2d}:{:0>2d}:{:0>2d}".format(int(hours), int(mins), int(secs))
 
 			target.write(
 				html_panel('panel-primary',
@@ -221,7 +221,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def do_POST(self):
 		"""
 		Handles POSTed data, from the config page.
-		Will then request self.do_GET_config() after.
+		Will then call self.do_GET_config() after.
 		"""
 		try:
 			form = cgi.FieldStorage(
@@ -230,34 +230,46 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 						environ={'REQUEST_METHOD':'POST',
 								'CONTENT_TYPE':self.headers['Content-type']})
 
-			if 'table_is_options' in form.keys():
-				for key in form.keys():
+			table = form.getvalue('table')
+			action = form.getvalue('action')
+			otherkeys = form.keys()
+			otherkeys.remove('table')
+			otherkeys.remove('action')
+
+			if table == 'options':
+				pre_html = html_panel('panel-success', "Success", "Options saved.")
+				for key in otherkeys:
 					sql = "UPDATE options SET value=? WHERE option='"+str(key)+"'"
 					args = (form.getvalue(key),)
 					quick_query(sql, args)
-			else:
-				if 'do_delete' in form.keys():
+			elif table == 'playlists':
+				if action == 'delete':
+					pre_html = html_panel('panel-success', "Success", "Playlist deleted.")
 					sql = 'DELETE FROM playlists WHERE id=?'
 					args = [form.getvalue('id'),]
 					quick_query(sql, args)
+				elif action == 'add':
+					pre_html = html_panel('panel-success', "Success", "Playlist added.")
+					sql = 'INSERT INTO playlists (name,url,random,play_function) VALUES (?,?,?,?)'
+					args = [form.getvalue('name'),
+							form.getvalue('url'),
+							form.getvalue('random'),
+							form.getvalue('play_function')]
+					quick_query(sql, args)
+				elif action == 'update':
+					pre_html = html_panel('panel-success', "Success", "Playlist updated.")
+					sql = 'UPDATE playlists SET name=?, url=?, random=?, play_function=? WHERE id=?'
+					args = [form.getvalue('name'),
+							form.getvalue('url'),
+							form.getvalue('random'),
+							form.getvalue('play_function'),
+							form.getvalue('id')]
+					quick_query(sql, args)
 				else:
-					if form.getvalue('id') == 'NEW':
-						sql = 'INSERT INTO playlists (name,url,random,play_function) VALUES (?,?,?,?)'
-						args = [form.getvalue('name'),
-								form.getvalue('url'),
-								form.getvalue('random'),
-								form.getvalue('play_function')]
-						quick_query(sql, args)
-					else:
-						sql = 'UPDATE playlists SET name=?, url=?, random=?, play_function=? WHERE id=?'
-						args = [form.getvalue('name'),
-								form.getvalue('url'),
-								form.getvalue('random'),
-								form.getvalue('play_function'),
-								form.getvalue('id')]
-						quick_query(sql, args)
+					pre_html = html_panel('panel-warning', 'Unknown action', 'Action not specified or unknown action.')
+			else:
+				pre_html = html_panel('panel-warning', 'Unknown table', 'Table not specified')
 				
-			pre_html = html_panel('panel-success', "Success", "Options saved.")
 		except sqlite3.OperationalError as e:
 			pre_html = html_panel('panel-danger', "DB Error", "Could not save data: ", str(e))
 		except Exception as e:
@@ -292,6 +304,8 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 					tablerows += html_row(
 									html_form('station_form_' + str(pl_id), '/config', 'POST',
+										html_hidden('table', 'playlists'),
+										html_hidden('action', 'update'),
 										html_hidden('id', pl_id),
 										html_cells(
 											html_input('name', pl_name, 'Required'),
@@ -302,8 +316,9 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 										)
 									),
 									html_form('station_delete_form_' + str(pl_id), '/config', 'POST',
+										html_hidden('table', 'playlists'),
+										html_hidden('action', 'delete'),
 										html_hidden('id', pl_id),
-										html_hidden('do_delete', 'do_delete'),
 										html_cells(
 											html_submit(html_glyph('trash'))
 										)
@@ -313,7 +328,8 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 				tablerows += html_row(
 								html_form('station_add_form', '/config', 'POST',
-									html_hidden('id', 'NEW'),
+									html_hidden('table', 'playlists'),
+									html_hidden('action', 'add'),
 									html_cells(
 										html_input('name', '', 'Required'),
 										html_input('url', '', 'Required'),
@@ -359,7 +375,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				#endwhile
 
 				html += html_form('option_form', '/config', 'POST',
-							html_hidden('table_is_options', 'options'),
+							html_hidden('table', 'options'),
 							html_panel('panel-default',
 								html_div('input-group',
 										html_span('input-group-addon', 'Radio Configuration'),
@@ -388,7 +404,6 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			html = self.do_GET_config()
 		elif self.path in ('/now', '/index.html', '/'):
 			source = open('index.html', 'r')
-#			html = '\n'.join(source.readlines())
 			html = source.read()
 			source.close()
 		elif self.path.startswith('../'):

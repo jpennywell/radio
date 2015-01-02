@@ -225,7 +225,7 @@ def main(argv):
 							senddata['file'] = songdata['file']
 							senddata['elapsed'] = status['elapsed']
 							senddata['time'] = songdata['time']
-							cl_web_server.send(['html', senddata])
+							cl_web_server.send(['indexhtml', senddata])
 
 					except rmpd.CommandError as e:
 						logging.error("[ Radio ] mpd:Error load " + st_name + ":" + str(e))
