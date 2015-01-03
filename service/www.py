@@ -7,6 +7,11 @@ import BaseHTTPServer, cgi, logging, threading, urllib2
 import socket, fcntl, struct
 import sqlite3
 
+try:
+    import simplejson as json
+except ImportError:
+    import json
+
 from . import service
 from . import config_defaults
 
@@ -400,7 +405,28 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		docPath = "%s%s" % (docRoot, self.path)
 		code = 200
 
-		if self.path == '/config':
+		if self.path == '/ajax/save_config':
+			content_type = self.headers['Content-type']
+			if not content_type.startswith('application/json'):
+				push_output('Error - not application/json', 404, 'application/json')
+				return
+			else
+				content_length = int(self.headers['Content-length'])
+				content = self.rfile.read(content_length)
+				data = json.loads(content)
+				try:
+					o_name = data['name']
+					o_value = data['value']
+					sql = "UPDATE options SET value=? WHERE option='" + str(o_name) + "'"
+					args = (o_value,)
+					quick_query(sql, args)
+
+					push_output('what?', 200, 'application/json')
+					return
+				except KeyError:
+				push_output('Bad data format / missing correct keys', 404, 'application/json')
+				return
+		elif self.path == '/config':
 			html = self.do_GET_config()
 		elif self.path in ('/now', '/index.html', '/'):
 			source = open('index.html', 'r')
