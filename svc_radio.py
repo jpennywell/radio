@@ -37,7 +37,9 @@ if (os.getuid() != 0):
 opt_ldr = OL.OptionLoader('config.db')
 
 try:
-	# Reset/truncate the log file
+	"""
+	Reset/truncate the log file
+	"""
 	with open('radio.log', 'w'):
 		pass
 

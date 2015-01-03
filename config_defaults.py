@@ -1,5 +1,7 @@
-# OptName: (type, default),
-# where type is a python Type or a tuple of allowed choices.
+"""
+OptName: (type, default),
+where type is a python Type or a tuple of allowed choices.
+"""
 defaults = {
 'LOG_LEVEL': (('INFO','DEBUG','WARNING','ERROR','CRITICAL'), 'DEBUG'),
 'SHOW_DIAL': (bool, False),
