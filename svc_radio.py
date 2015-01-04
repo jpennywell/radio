@@ -37,7 +37,9 @@ if (os.getuid() != 0):
 opt_ldr = OL.OptionLoader('config.db')
 
 try:
-	# Reset/truncate the log file
+	"""
+	Reset/truncate the log file
+	"""
 	with open('radio.log', 'w'):
 		pass
 
@@ -225,7 +227,7 @@ def main(argv):
 							senddata['file'] = songdata['file']
 							senddata['elapsed'] = status['elapsed']
 							senddata['time'] = songdata['time']
-							cl_web_server.send(['html', senddata])
+							cl_web_server.send(['indexhtml', senddata])
 
 					except rmpd.CommandError as e:
 						logging.error("[ Radio ] mpd:Error load " + st_name + ":" + str(e))

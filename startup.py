@@ -14,7 +14,7 @@ if (os.getuid() != 0):
 
 
 """
-RunawayProcess
+RespawningProcess
 
 An exception class raised when a Process spawns too quickly.
 """

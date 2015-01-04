@@ -56,7 +56,7 @@ class Service(object):
 				except AttributeError as e:
 					logging.error(self.__class__.__name__ + "> No callable function '" + ACT + "'")
 			else:
-				print(">> Incoming: " + str(msg))
+				logging.info(">> Incoming: " + str(msg))
 				try:
 					func = getattr(self, msg)
 					if callable(func):
