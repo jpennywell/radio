@@ -1,30 +1,33 @@
 $(document).ready(function() {
-
 	function save_option(o_name, o_val) {
+		elt = 'input[name=' + o_name + ']'
 		$.ajax({
 			cache: false,
-			url: '/ajax/save_option',
-			type: 'GET',
-			content-type: 'application/json',
-			dataType: 'json',
-			data: JSON.stringify({'name': o_name, 'value': o_val})
-		}).done(function(json) {
-			$(o_name).addClass('has-success');
-			setTimeout(function() {
-				$(o_name).removeClass('has-success');
-			}, 3000);
-		}).error(function(json) {
-			$(o_name).addClass('has-error');
-			setTimeout(function() {
-				$(o_name).removeClass('has-error');
-			}, 3000);
+			url: '/ajax_save_option',
+			type: 'POST',
+			contentType: 'application/json',
+			data: JSON.stringify({'table': 'options', 'name': o_name, 'value': o_val}),
+			dataType: 'text',
+			success: function(json) {
+				$(elt).css('color', 'blue')
+				setTimeout(function() {
+					$(elt).css('color', 'black');
+				}, 3000);
+			},
+			error: function(json) {
+				alert(JSON.stringify(json))
+				$(o_name).css('color', 'red');
+				setTimeout(function() {
+					$(o_name).css('color', 'black');
+				}, 3000);
+			}
 		});
 	}
 
-	$( "form[name='option_form'] > :text" ).each(function() {
+	$( "form[name='option_form'] :text" ).each(function() {
 		$(this).change(function() {
-			save_option(this.attr('name'), this.val());
-		}
+			save_option($(this).attr('name'), $(this).val());
+		});
 	});
 
 });

@@ -4,7 +4,7 @@
 #
 
 import BaseHTTPServer, cgi, logging, threading, urllib2
-import socket, fcntl, struct
+import socket, fcntl, struct, os
 import sqlite3
 
 try:
@@ -78,10 +78,12 @@ HTML_HEADER = "<!DOCTYPE html>\
 <html lang='en'>\
 <head>\
 <title>Radio Status</title>\
+<meta name='viewport' content='width=device-width, initial-scale=1'>\
 <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css'>\
 <link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css'>\
-<meta name='viewport' content='width=device-width, initial-scale=1'>\
-<script src='www/jquery-2.1.3.min.js'></script>\
+<script src='https://code.jquery.com/jquery-2.1.3.min.js'></script>\
+<script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js'></script>\
+<script src='ajax_options.js'></script>\
 </head>\
 <body>\
 <div class='container'>\
@@ -104,6 +106,10 @@ StoppableServer
 This HTTPServer has a keepalive flag that turns on/off the server.
 """
 class StoppableServer(BaseHTTPServer.HTTPServer):
+	def __init__(self, serverAddress, requestHandlerClass, docRoot):
+		self.docRoot = docRoot
+		BaseHTTPServer.HTTPServer.__init__(self, serverAddress, requestHandlerClass)
+
 	"""
 	While this is True, the server keeps running.
 	"""
@@ -142,15 +148,16 @@ class RadioWebServer(service.Service):
 	"""
 	server = False
 
-	def __init__(self, host, port):
+	def __init__(self, host, port, docRoot):
 		"""
 		Start a server in a thread.
 		"""
 		self.host = host
 		self.port = port
+		self.docRoot = docRoot
 
 		try:
-			self.server = StoppableServer((self.host, self.port), CustomHandler)
+			self.server = StoppableServer((self.host, self.port), CustomHandler, self.docRoot)
 			self.server_t = threading.Thread(target=self.server.serve_until_shutdown)
 			self.server_t.daemon = True
 			self.server_t.start()
@@ -161,7 +168,7 @@ class RadioWebServer(service.Service):
 			logging.critical(self.__class__.__name__ + "> Can't start web server: " + str(e))
 
 		empty_data = {'':''}
-		self.html(empty_data)
+		self.indexhtml(empty_data)
 
 
 	def stop(self):
@@ -180,7 +187,7 @@ class RadioWebServer(service.Service):
 
 	def indexhtml(self, data):
 		try:
-			target = open('index.html', 'w')
+			target = open(self.docRoot + '/index.html', 'w')
 			target.write(HTML_HEADER)
 
 			emptydata = {'artist':'Unknown', 'album':'Unknown', 'title':'Unknown', 'file':'Unknown', 'elapsed':0}
@@ -229,6 +236,42 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		Will then call self.do_GET_config() after.
 		"""
 		try:
+			qmark = self.path.index('?')
+			docFile = self.path[0:qmark]
+			docQuery = self.path[qmark+1:]
+		except ValueError:
+			docFile = self.path
+			docQuery = ''
+
+		docRoot = self.server.docRoot
+ 		docPath = "%s%s" % (docRoot, docFile)
+		code = 200
+
+		if docFile == '/ajax_save_option':
+			content_type = self.headers['Content-type']
+			if not content_type.startswith('application/json'):
+				self.push_output('Error - not application/json', 404, 'application/json')
+				return
+			else:
+				content_length = int(self.headers['Content-length'])
+				content = self.rfile.read(content_length)
+				data = json.loads(content)
+				try:
+					o_name = data['name']
+					o_value = data['value']
+					sql = "UPDATE options SET value=? WHERE option='" + str(o_name) + "'"
+					args = (o_value,)
+					quick_query(sql, args)
+					print "here"
+					self.push_output('SQL Success', 200, 'application/json')
+					return
+				except KeyError:
+					self.push_output('Bad data format / missing correct keys', 404, 'application/json')
+					return
+			return
+		
+
+		try:
 			form = cgi.FieldStorage(
 						fp=self.rfile,
 						headers=self.headers,
@@ -238,8 +281,10 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			table = form.getvalue('table')
 			action = form.getvalue('action')
 			otherkeys = form.keys()
-			otherkeys.remove('table')
-			otherkeys.remove('action')
+			if 'table' in otherkeys:
+				otherkeys.remove('table')
+			if 'action' in otherkeys:
+				otherkeys.remove('action')
 
 			if table == 'options':
 				pre_html = html_panel('panel-success', "Success", "Options saved.")
@@ -401,35 +446,22 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		"""
 		Handle all GET requests.
 		"""
+		try:
+			qmark = self.path.index('?')
+			docFile = self.path[0:qmark]
+			docQuery = self.path[qmark+1:]
+		except ValueError:
+			docFile = self.path
+			docQuery = ''
+
 		docRoot = self.server.docRoot
-		docPath = "%s%s" % (docRoot, self.path)
+ 		docPath = "%s%s" % (docRoot, docFile)
 		code = 200
 
-		if self.path == '/ajax/save_config':
-			content_type = self.headers['Content-type']
-			if not content_type.startswith('application/json'):
-				push_output('Error - not application/json', 404, 'application/json')
-				return
-			else
-				content_length = int(self.headers['Content-length'])
-				content = self.rfile.read(content_length)
-				data = json.loads(content)
-				try:
-					o_name = data['name']
-					o_value = data['value']
-					sql = "UPDATE options SET value=? WHERE option='" + str(o_name) + "'"
-					args = (o_value,)
-					quick_query(sql, args)
-
-					push_output('what?', 200, 'application/json')
-					return
-				except KeyError:
-				push_output('Bad data format / missing correct keys', 404, 'application/json')
-				return
-		elif self.path == '/config':
+		if docFile == '/config':
 			html = self.do_GET_config()
-		elif self.path in ('/now', '/index.html', '/'):
-			source = open('index.html', 'r')
+		elif docFile in ('/now', '/index.html', '/'):
+			source = open(docRoot + '/index.html', 'r')
 			html = source.read()
 			source.close()
 		elif self.path.startswith('../'):
@@ -439,7 +471,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			html = source.read()
 			source.close()
 		else:
-			html = HTML_HEADER + html_panel('panel-danger', '404', 'No file available', self.path) + HTML_FOOTER
+			html = HTML_HEADER + html_panel('panel-danger', '404', 'No file available: ', self.path) + HTML_FOOTER
 			code = 404
 
 		self.push_output(html, code)
@@ -449,7 +481,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		"""
 		Push 'content' out with the correct headers.
 		"""
-		self.send_response(code)
+		self.send_response(code, "OK")
 		self.send_header("Content-type", c_type)
 		self.send_header("Content-length", len(content))
 		self.end_headers()

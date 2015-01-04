@@ -27,6 +27,7 @@ defaults = {
 'WEB_LISTEN_PORT': (int, 6010),
 'WEB_INTERFACE': (str, 'eth0'),
 'WEB_HTTP_PORT': (int, 80),
+'WEB_ROOT': (str, '/home/pi/git/radio/www'),
 'ENABLE_SPI': (bool, False),
 'SPICLK': (int, 18),
 'SPIMISO': (int, 23),
