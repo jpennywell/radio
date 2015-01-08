@@ -1,12 +1,6 @@
 import sqlite3
 from . import config_defaults
 
-class UnknownOption(Exception):
-	pass
-
-class UnknownDefault(Exception):
-	pass
-
 """
 OptionLoader
 
@@ -49,8 +43,6 @@ class OptionLoader(object):
 						opt_val = str(opt_val_u)
 
 					self._config[opt_name] = opt_val
-		except KeyError:
-			raise UnknownDefault
 		except sqlite3.OperationalError:
 			raise
 
@@ -70,8 +62,17 @@ class OptionLoader(object):
 			(opt_type, def_val) = self._defaults[opt_name]
 			return def_val
 		except KeyError:
-			raise UnknownDefault
+			return ''
 
+	def get_opt_type(self, opt_name):
+		"""
+		Look up the type for a given option.
+		"""
+		try:
+			(opt_type, def_val) = self._defaults[opt_name]
+			return opt_type
+		except KeyError:
+			return None
 
 	def fetch(self, opt_name):
 		"""
@@ -80,10 +81,10 @@ class OptionLoader(object):
 		try:
 			return self._config[opt_name]
 		except KeyError:
-			return UnknownOption
+			return ''
 
 
-	def val_is_right_type(self, opt_name, opt_value):
+	def val_type_ok(self, opt_name, opt_value):
 		"""
 		Make sure that opt_value is the right type for opt_name.
 		"""
@@ -98,7 +99,7 @@ class OptionLoader(object):
 
 			return True
 		except KeyError:
-			raise UnknownDefault
+			return False
 
 
 	def set(self, opt_name, opt_value):
@@ -123,11 +124,11 @@ class OptionLoader(object):
 			self._config[opt_name] = opt_value
 			return True
 		except KeyError:
-			raise UnknownOption
+			return False
 		except sqlite3.OperationalError:
-			raise
+			return False
 		except UnknownDefault:
-			raise
+			return False
 
 #End of OptionLoader class
 
