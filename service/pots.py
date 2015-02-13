@@ -25,7 +25,7 @@ The function 'self.update()' stores the pot value last read.
 Instances of this class can override 'self.update()' to do more
 with the read value.
 """
-class PotReader:
+class PotReader(object):
 	"""
 	The hardware pin of the pot.
 	"""
@@ -64,14 +64,14 @@ class PotReader:
 
 		self.options = OL.OptionLoader('config.db')
 
-		GPIO.setup(self.options.fetch(SPIMOSI), GPIO.OUT)
-		GPIO.setup(self.options.fetch(SPIMISO), GPIO.IN)
-		GPIO.setup(self.options.fetch(SPICLK), GPIO.OUT)
-		GPIO.setup(self.options.fetch(SPICS), GPIO.OUT)
+		GPIO.setup(self.options.fetch('SPIMOSI'), GPIO.OUT)
+		GPIO.setup(self.options.fetch('SPIMISO'), GPIO.IN)
+		GPIO.setup(self.options.fetch('SPICLK'), GPIO.OUT)
+		GPIO.setup(self.options.fetch('SPICS'), GPIO.OUT)
 
 		self.pot_pin = pin
 
-		if self.options.fetch(ENABLE_SPI):
+		if self.options.fetch('ENABLE_SPI'):
 			self.enable_spi()
 
 
@@ -83,7 +83,7 @@ class PotReader:
 		raise PotChange
 
 
-	def enable_spi():
+	def enable_spi(self):
 		"""
 		Use a SPI interface instead of the ADC.
 		If this fails, it will fallback to the ADC.
@@ -98,7 +98,7 @@ class PotReader:
 			return False
 
 
-	def disable_spi():
+	def disable_spi(self):
 		"""
 		Turns off the SPI hooks.
 		"""
@@ -161,9 +161,10 @@ class PotReader:
 		Reads a pot value from a pot and calculate a smoothed average.
 		"""
 		if self.use_spi:
+			print("USING SPI")
 			pot_read = self._readspi(self.pot_pin)
 		else:
-			pot_read = self._readadc(self.pot_pin, self.options.fetch(SPICLK), self.options.fetch(SPIMOSI), self.options.fetch(SPIMISO), self.options.fetch(SPICS))
+			pot_read = self._readadc(self.pot_pin, self.options.fetch('SPICLK'), self.options.fetch('SPIMOSI'), self.options.fetch('SPIMISO'), self.options.fetch('SPICS'))
 
 		smoothed_read = int(self.smooth_fac * pot_read + (1 - self.smooth_fac) * self.last_read)
 		# self.last_read = smoothed_read #Done by self.update()
@@ -180,6 +181,9 @@ TunerKnob
 This extends PotReader.
 """
 class TunerPotReader(PotReader):
+
+	smooth_fac = 0.9
+
 	"""
 	Gap between stations, measured in pot ticks (0 - 1023)
 	"""
@@ -212,6 +216,8 @@ class TunerPotReader(PotReader):
 
 
 	def __init__(self, pin, stations):
+		super(TunerPotReader, self).__init__(pin)
+
 		"""
 		Populate self.station_list with the station data, and
 		Calculate dial frequencies.
@@ -219,7 +225,6 @@ class TunerPotReader(PotReader):
 		self.pot_pin = pin
 
 		self.station_list.extend(stations)
-
 		num_st = len(self.station_list)
 
 		"""
@@ -247,10 +252,9 @@ class TunerPotReader(PotReader):
 			.5g r1r g r2
 			.5g r1r g r2r g r3
 		"""
-
 		num_st = len(self.station_list)
-		self.cfg_st_radius = 1023 / (num_st * (self.options.fetch(GAP_FACTOR) + 2))
-		self.cfg_st_gap = self.cfg_st_radius * self.options.fetch(GAP_FACTOR)
+		self.cfg_st_radius = 1023 / (num_st * (self.options.fetch('GAP_FACTOR') + 2))
+		self.cfg_st_gap = self.cfg_st_radius * self.options.fetch('GAP_FACTOR')
 
 		for t in range(0, len(self.station_list), 1):
 			fr = (0.5 * self.cfg_st_gap + self.cfg_st_radius) + \

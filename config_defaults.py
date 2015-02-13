@@ -1,10 +1,8 @@
-"""
-OptName: (type, default),
-where type is a python Type or a tuple of allowed choices.
-"""
+# OptName: (type, default),
+# where type is a python Type or a tuple of allowed choices.
 defaults = {
 'LOG_LEVEL': (('INFO','DEBUG','WARNING','ERROR','CRITICAL'), 'DEBUG'),
-'SHOW_DIAL': (bool, False),
+'SHOW_DIAL': (int, 0),
 'SHUTDOWN_CMD': (str, 'sudo shutdown -h now'),
 'VOL_POT_ADC': (int, 2),
 'TUNE_POT_ADC': (int, 1),
@@ -27,8 +25,7 @@ defaults = {
 'WEB_LISTEN_PORT': (int, 6010),
 'WEB_INTERFACE': (str, 'eth0'),
 'WEB_HTTP_PORT': (int, 80),
-'WEB_ROOT': (str, '/home/pi/git/radio/www'),
-'ENABLE_SPI': (bool, False),
+'ENABLE_SPI': (int, 0),
 'SPICLK': (int, 18),
 'SPIMISO': (int, 23),
 'SPIMOSI': (int, 24),
