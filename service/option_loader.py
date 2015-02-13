@@ -107,7 +107,7 @@ class OptionLoader(object):
 		Set an option to a value.
 		"""
 		try:
-			if opt_name is not in self._config:
+			if opt_name not in self._config:
 				return False
 
 			''' Make sure that the supplied value matches the type. '''

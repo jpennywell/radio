@@ -4,18 +4,35 @@
 #
 
 import BaseHTTPServer, cgi, logging, threading, urllib2
-import socket, fcntl, struct, os
+import socket, fcntl, struct
 import sqlite3
-
-from . import option_loader as OL
-
-try:
-    import simplejson as json
-except ImportError:
-    import json
 
 from . import service
 from . import config_defaults
+
+HTML_HEADER = "<!DOCTYPE html>\
+<!DOCTYPE html>\
+<html lang='en'>\
+<head>\
+<title>Radio Status</title>\
+<link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css'>\
+<link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css'>\
+<meta name='viewport' content='width=device-width, initial-scale=1'>\
+<style type='text/css'>table.table { font-size: 2em; }</style>\
+</head>\
+<body>\
+<div class='container'>\
+<nav class='navbar navbar-default' role='navigation'><a class='navbar-brand'>Radio</a>\
+<p class='navbar-text navbar-right'>\
+<div class='btn-group navbar-right' role='group'>\
+<a class='btn btn-default navbar-btn' href='/'><span class='glyphicon glyphicon-music'></span> Now Playing</a>\
+<a class='btn btn-default navbar-btn' href='/config'><span class='glyphicon glyphicon-cog'></span> Settings</a>\
+</p>\
+</nav>"
+
+HTML_FOOTER = "</div>\
+</body>\
+</html>"
 
 def html_hidden(name, value):
 	return "<input type='hidden' name='{}' value='{}'/>".format(name,value)
@@ -38,68 +55,8 @@ def html_select(name, opt_list, active_elt=None):
 def html_glyph(glyph_class):
 	return "<span class='glyphicon glyphicon-{}'></span> ".format(glyph_class)
 
-def html_panel(panel_cls, title, *content):
-	return "<div class='panel {}'><div class='panel-heading'><div class='panel-title'>{}</div></div><div class='panel-body'>{}</div></div>".format(panel_cls, title, ''.join(content))
-
-def html_div(div_cls, *content):
-	return "<div class='{}'>{}</div>".format(div_cls, ''.join(content))
-
-def html_span(span_cls, *content):
-	return "<span class='{}'>{}</span>".format(span_cls, ''.join(content))
-
-def html_form(name, action, method, *content):
-	return "<form name='{}' action='{}' method='{}'><div class='form-group'>{}</div></form>".format(name,action,method,''.join(content))
-
-def html_submit(*content):
-	return "<button type='submit' class='btn btn-defult'>{}</button>".format(''.join(content))
-
-def html_table(header, *rows):
-	return "<table class='table'><tr><th>{}</th></tr>{}</table>".format('</th><th>'.join(header), ''.join(rows))
-
-def html_table_headerless(*rows):
-	return "<table class='table'>{}</table>".format(''.join(rows))
-
-def html_row(*content):
-	return '<tr>{}</tr>'.format(''.join(content))
-
-def html_rows_multi(*content):
-	return '<tr>{}</tr>'.format('</tr><tr>'.join(content))
-
-def html_cells(*cells):
-	return '<td>' + '</td><td>'.join(cells) + '</td>'
-
-def quick_query(sql, args):
-	db_conn = sqlite3.connect('config.db')
-	with db_conn:
-		cur = db_conn.cursor()
-		cur.execute(sql, args)
-
-
-HTML_HEADER = "<!DOCTYPE html>\
-<!DOCTYPE html>\
-<html lang='en'>\
-<head>\
-<title>Radio Status</title>\
-<meta name='viewport' content='width=device-width, initial-scale=1'>\
-<link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css'>\
-<link rel='stylesheet' href='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css'>\
-<script src='https://code.jquery.com/jquery-2.1.3.min.js'></script>\
-<script src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js'></script>\
-<script src='ajax_options.js'></script>\
-</head>\
-<body>\
-<div class='container'>\
-<nav class='navbar navbar-default' role='navigation'><a class='navbar-brand'>Radio</a>\
-<p class='navbar-text navbar-right'>\
-<div class='btn-group navbar-right' role='group'>\
-<a class='btn btn-default navbar-btn' href='/'><span class='glyphicon glyphicon-music'></span> Now Playing</a>\
-<a class='btn btn-default navbar-btn' href='/config'><span class='glyphicon glyphicon-cog'></span> Settings</a>\
-</p>\
-</nav>"
-
-HTML_FOOTER = "</div>\
-</body>\
-</html>"
+def html_panel(title, message, divclass='panel-primary'):
+	return "<div class='panel {}'><div class='panel-heading'><div class='panel-title'>{}</div></div><div class='panel-body'>{}</div></div>".format(divclass, title, message)
 
 
 """
@@ -108,10 +65,6 @@ StoppableServer
 This HTTPServer has a keepalive flag that turns on/off the server.
 """
 class StoppableServer(BaseHTTPServer.HTTPServer):
-	def __init__(self, serverAddress, requestHandlerClass, docRoot):
-		self.docRoot = docRoot
-		BaseHTTPServer.HTTPServer.__init__(self, serverAddress, requestHandlerClass)
-
 	"""
 	While this is True, the server keeps running.
 	"""
@@ -150,16 +103,15 @@ class RadioWebServer(service.Service):
 	"""
 	server = False
 
-	def __init__(self, host, port, docRoot):
+	def __init__(self, host, port):
 		"""
 		Start a server in a thread.
 		"""
 		self.host = host
 		self.port = port
-		self.docRoot = docRoot
 
 		try:
-			self.server = StoppableServer((self.host, self.port), CustomHandler, self.docRoot)
+			self.server = StoppableServer((self.host, self.port), CustomHandler)
 			self.server_t = threading.Thread(target=self.server.serve_until_shutdown)
 			self.server_t.daemon = True
 			self.server_t.start()
@@ -170,7 +122,7 @@ class RadioWebServer(service.Service):
 			logging.critical(self.__class__.__name__ + "> Can't start web server: " + str(e))
 
 		empty_data = {'':''}
-		self.indexhtml(empty_data)
+		self.html(empty_data)
 
 
 	def stop(self):
@@ -187,9 +139,9 @@ class RadioWebServer(service.Service):
 		logging.debug(self.__class__.__name__ + "> ...thread done.")
 
 
-	def indexhtml(self, data):
+	def html(self, data):
 		try:
-			target = open(self.docRoot + '/index.html', 'w')
+			target = open('index.html', 'w')
 			target.write(HTML_HEADER)
 
 			emptydata = {'artist':'Unknown', 'album':'Unknown', 'title':'Unknown', 'file':'Unknown', 'elapsed':0}
@@ -202,21 +154,23 @@ class RadioWebServer(service.Service):
 			hours = total_secs // 3600
 			mins = (total_secs - 3600*hours)//60
 			secs = total_secs - 3600*hours - mins*60
-			time = "{:0>2d}:{:0>2d}:{:0>2d}".format(int(hours), int(mins), int(secs))
+			time = "{:0>2d}:{:0>2d}:{:0>2d}".format(int(hours),int(mins),int(secs))
 
-			target.write(
-				html_panel('panel-primary',
-							'Now Playing',
-							html_table_headerless(
-								html_rows_multi(
-									html_cells(html_glyph('user') + ' Artist', data['artist']),
-									html_cells(html_glyph('th-list') + ' Album', data['album']),
-									html_cells(html_glyph('music') + ' Title', data['title']),
-									html_cells(html_glyph('time') + ' Elapsed', time)
-								)
-							)
-				)
-			)
+			target.write("<div class='panel panel-primary'><div class='panel-heading'>Now Playing</div><table class='table'>")
+			target.write("<tr><td width='30%'>{} Artist:</td><td>{}</td></<tr>"
+							.format(html_glyph('user'), data['artist'])
+						)
+			target.write("<tr><td>{} Album:</td><td>{}</td></<tr>"
+							.format(html_glyph('th-list'), data['album'])
+						)
+			target.write("<tr><td>{} Title:</td><td>{}</td></<tr>"
+							.format(html_glyph('music'), data['title'])
+						)
+			target.write("<tr><td>{} Elapsed:</td><td>{}</td></<tr>"
+							.format(html_glyph('time'), time)
+						)
+
+			target.write("</table></div>")
 
 			target.write(HTML_FOOTER)
 			target.close()
@@ -233,268 +187,163 @@ A GET request handler that returns only the index.html file.
 """
 class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def do_POST(self):
-		"""
-		Handles POSTed data, from the config page.
-		Will then call self.do_GET_config() after.
-		"""
-		try:
-			qmark = self.path.index('?')
-			docFile = self.path[0:qmark]
-			docQuery = self.path[qmark+1:]
-		except ValueError:
-			docFile = self.path
-			docQuery = ''
-
-		docRoot = self.server.docRoot
- 		docPath = "%s%s" % (docRoot, docFile)
-		code = 200
-
-		if docFile == '/ajax_save_option':
-			content_type = self.headers['Content-type']
-			if not content_type.startswith('application/json'):
-				self.push_output('Error - not application/json', 404, 'application/json')
-				return
-			else:
-				content_length = int(self.headers['Content-length'])
-				content = self.rfile.read(content_length)
-				data = json.loads(content)
-				try:
-					o_name = data['name']
-					o_value = data['value']
-
-					#opt_ldr = OL.OptionLoader('config.db')
-					#if opt_ldr.option_exists(o_name) and opt_ldr.val_type_ok(o_name, o_value):
-					#	opt_ldr.set(o_name, o_value)
-
-					sql = "UPDATE options SET value=? WHERE option='" + str(o_name) + "'"
-					args = (o_value,)
-					quick_query(sql, args)
-					self.push_output('SQL Success', 200, 'application/json')
-					return
-				except KeyError:
-					self.push_output('Bad data format / missing correct keys', 404, 'application/json')
-					return
-			return
-		
-
-		try:
-			form = cgi.FieldStorage(
-						fp=self.rfile,
-						headers=self.headers,
-						environ={'REQUEST_METHOD':'POST',
-								'CONTENT_TYPE':self.headers['Content-type']})
-
-			table = form.getvalue('table')
-			action = form.getvalue('action')
-			otherkeys = form.keys()
-			if 'table' in otherkeys:
-				otherkeys.remove('table')
-			if 'action' in otherkeys:
-				otherkeys.remove('action')
-
-			if table == 'options':
-				pre_html = html_panel('panel-success', "Success", "Options saved.")
-				for key in otherkeys:
-					#key_value = form.getvalue(key)
-					#if opt_ldr.option_exists(key) and opt_ldr.val_type_ok(key, key_value):
-					#	opt_ldr.set(str(key), form.getvalue(key))
-					sql = "UPDATE options SET value=? WHERE option='"+str(key)+"'"
-					args = (form.getvalue(key),)
-					quick_query(sql, args)
-			elif table == 'playlists':
-				if action == 'delete':
-					pre_html = html_panel('panel-success', "Success", "Playlist deleted.")
-					sql = 'DELETE FROM playlists WHERE id=?'
-					args = [form.getvalue('id'),]
-					quick_query(sql, args)
-				elif action == 'add':
-					pre_html = html_panel('panel-success', "Success", "Playlist added.")
-					sql = 'INSERT INTO playlists (name,url,random,play_function) VALUES (?,?,?,?)'
-					args = [form.getvalue('name'),
-							form.getvalue('url'),
-							form.getvalue('random'),
-							form.getvalue('play_function')]
-					quick_query(sql, args)
-				elif action == 'update':
-					pre_html = html_panel('panel-success', "Success", "Playlist updated.")
-					sql = 'UPDATE playlists SET name=?, url=?, random=?, play_function=? WHERE id=?'
-					args = [form.getvalue('name'),
-							form.getvalue('url'),
-							form.getvalue('random'),
-							form.getvalue('play_function'),
-							form.getvalue('id')]
-					quick_query(sql, args)
-				else:
-					pre_html = html_panel('panel-warning', 'Unknown action', 'Action not specified or unknown action.')
-			else:
-				pre_html = html_panel('panel-warning', 'Unknown table', 'Table not specified')
-				
-		except sqlite3.OperationalError as e:
-			pre_html = html_panel('panel-danger', "DB Error", "Could not save data: ", str(e))
-		except Exception as e:
-			logging.info("No form data: " + str(e))
-
-		self.do_GET_config(pre_html)
-
-
-	def do_GET_config(self, pre_html = ''):
-		"""
-		Generate the config page.
-		The argument 'pre_html' can be passed by do_POST with a return message.
-		"""
-		html = HTML_HEADER + pre_html
-
-		try:
-			db_conn = sqlite3.connect('config.db')
-
-			with db_conn:
-				cur = db_conn.cursor()
-
-				cur.execute("SELECT * FROM playlists")
-				tablerows = ''
-				while True:
-					row = cur.fetchone()
-					if row == None:
-						break
-					(pl_id, pl_name, pl_url, pl_random, pl_func) = row
-					pl_url = pl_url or ''
-					pl_random = pl_random or 0
-					pl_func = pl_func or ''
-
-					tablerows += html_row(
-									html_form('station_form_' + str(pl_id), '/config', 'POST',
-										html_hidden('table', 'playlists'),
-										html_hidden('action', 'update'),
-										html_hidden('id', pl_id),
-										html_cells(
-											html_input('name', pl_name, 'Required'),
-											html_input('url', pl_url, 'Required'),
-											html_checkbox('random', is_checked=pl_random),
-											html_input('play_function', pl_func),
-											html_submit(html_glyph('ok'))
-										)
-									),
-									html_form('station_delete_form_' + str(pl_id), '/config', 'POST',
-										html_hidden('table', 'playlists'),
-										html_hidden('action', 'delete'),
-										html_hidden('id', pl_id),
-										html_cells(
-											html_submit(html_glyph('trash'))
-										)
-									)
-								)
-				#endwhile
-
-				tablerows += html_row(
-								html_form('station_add_form', '/config', 'POST',
-									html_hidden('table', 'playlists'),
-									html_hidden('action', 'add'),
-									html_cells(
-										html_input('name', '', 'Required'),
-										html_input('url', '', 'Required'),
-										html_checkbox('random', 0),
-										html_input('play_function', '')
-									),
-									"<td colspan='2'>",
-									html_submit(html_glyph('plus')),
-									"</td>"
-								)
-							)
-
-				html += html_panel('panel-default',
-							'Radio Stations',
-							'<i>Play function must be defined in the www_cfg.py file on the server.</i>',
-							html_table(('Playlist Name', 'URL/File', 'Randomize', 'Play Function'), tablerows))
-
-
-				cur.execute("SELECT * FROM options")
-				optionrows = ''
-				while True:
-					row = cur.fetchone()
-					if row == None:
-						break
-
-					(opt_name_u, opt_val_u) = row
-					opt_name = str(opt_name_u)
-
-					(opt_type,opt_default) = config_defaults.defaults[opt_name]
-					if type(opt_type) is type:
-						opt_val = opt_type(opt_val_u)
-					else:
-						opt_val = str(opt_val_u)
-
-					if opt_type is bool:
-						control = html_checkbox(opt_name, is_checked=(int(opt_val) == 1))
-					elif type(opt_type) is tuple:
-						control = html_select(opt_name, opt_type, opt_val)
-					else:
-						control = html_input(opt_name, opt_val, str(opt_default))
-
-					optionrows += html_row(html_cells(opt_name, control))
-				#endwhile
-
-				html += html_form('option_form', '/config', 'POST',
-							html_hidden('table', 'options'),
-							html_panel('panel-default',
-								html_div('input-group',
-										html_span('input-group-addon', 'Radio Configuration'),
-										html_span('input-group-btn', html_submit(html_glyph('ok')))
-								),
-								html_table(('Option', 'Setting'), optionrows)
-							)
-						)
-
-				html += HTML_FOOTER
-		except IOError as e:
-			html = HTML_HEADER + html_panel('panel-danger', 'IOError!', str(e)) + HTML_FOOTER
-		finally:
-			return html
-
+		self.do_GET()
 
 	def do_GET(self):
 		"""
-		Handle all GET requests.
+		Instead of serving up any requested file, serve up index.html.
 		"""
 		try:
-			qmark = self.path.index('?')
-			docFile = self.path[0:qmark]
-			docQuery = self.path[qmark+1:]
-		except ValueError:
-			docFile = self.path
-			docQuery = ''
+			if self.path == '/config':
+				try:
+					html = HTML_HEADER
 
-		docRoot = self.server.docRoot
- 		docPath = "%s%s" % (docRoot, docFile)
-		code = 200
+					try:
+						form = cgi.FieldStorage(
+									fp=self.rfile,
+									headers=self.headers,
+									environ={'REQUEST_METHOD':'POST',
+											'CONTENT_TYPE':self.headers['Content-type']})
+						if 'table_is_options' in form.keys():
+							try:
+								for key in form.keys():
+									sql = "UPDATE options SET value=? WHERE option='"+str(key)+"'"
+									db_conn = sqlite3.connect('config.db')
+									with db_conn:
+										cur = db_conn.cursor()
+										cur.execute(sql, (form.getvalue(key),))
+								html += html_panel("Success", "Options saved.", 'panel-success')
+							except sqlite3.OperationalError as e:
+								html += html_panel("DB Error", "Could not save data: " + str(e), 'panel-danger')
+						else:
+							try:
+								if 'do_delete' in form.keys():
+									sql = 'DELETE FROM playlists WHERE id=?'
+									args = [form.getvalue('id'),]
+									db_conn = sqlite3.connect('config.db')
+									with db_conn:
+										cur = db_conn.cursor()
+										cur.execute(sql, args)
+									html += html_panel("Success", "Playlist deleted.", 'panel-warning')
+								else:
+									if form.getvalue('id') == 'NEW':
+										sql = 'INSERT INTO playlists (name,url,random,play_function) VALUES (?,?,?,?)'
+										args = [form.getvalue('name'),
+												form.getvalue('url'),
+												form.getvalue('random'),
+												form.getvalue('play_function')]
+									else:
+										sql = 'UPDATE playlists SET name=?, url=?, random=?, play_function=? WHERE id=?'
+										args = [form.getvalue('name'),
+												form.getvalue('url'),
+												form.getvalue('random'),
+												form.getvalue('play_function'),
+												form.getvalue('id')]
+									db_conn = sqlite3.connect('config.db')
+									with db_conn:
+										cur = db_conn.cursor()
+										cur.execute(sql, args)
+									html += html_panel("Success", "Playlist saved.", 'panel-success')
+							except sqlite3.OperationalError as e:
+								html += html_panel("DB Error", "Could not save data: " + str(e), 'panel-danger')
+							
+					except Exception as e:
+						logging.error("No form data: " + str(e))
 
-		if docFile == '/config':
-			html = self.do_GET_config()
-		elif docFile in ('/now', '/index.html', '/'):
-			source = open(docRoot + '/index.html', 'r')
-			html = source.read()
-			source.close()
-		elif self.path.startswith('../'):
-			html = HTML_HEADER + html_panel('panel-danger', 'Bad path!', "Can't access files outside of the web tree.") + HTML_FOOTER
-		elif os.path.exists(docPath):
-			source = open(docPath, 'r')
-			html = source.read()
-			source.close()
-		else:
-			html = HTML_HEADER + html_panel('panel-danger', '404', 'No file available: ', self.path) + HTML_FOOTER
-			code = 404
+					db_conn = sqlite3.connect('config.db')
 
-		self.push_output(html, code)
+					with db_conn:
+						cur = db_conn.cursor()
 
+						cur.execute("SELECT * FROM playlists")
+						html += "<div class='panel panel-default'><div class='panel-heading''>"
+						html += "Radio Stations"
+						html += "</div><div class='panel-body'><i>Play function must be defined in the www_cfg.py file on the server.</i></div>"
+						html += "<table class='table'>"
+						html += "<tr><th>Playlist Name</th><th>URL/File</th><th>Randomize</th><th>Play function</th></tr>"
+						while True:
+							row = cur.fetchone()
+							if row == None:
+								break
+							(pl_id, pl_name, pl_url, pl_random, pl_func) = row
+							if pl_url is None:
+								pl_url = ''
+							if pl_random is None:
+								pl_random = 0
+							if pl_func is None:
+								pl_func = ''
 
-	def push_output(self, content, code=200, c_type='text/html'):
-		"""
-		Push 'content' out with the correct headers.
-		"""
-		self.send_response(code, "OK")
-		self.send_header("Content-type", c_type)
-		self.send_header("Content-length", len(content))
+							html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+							html += "<tr><td>" + html_hidden('id', pl_id) + html_input('name', pl_name, 'Required') + "</td>"
+							html += "<td>" + html_input('url', pl_url, 'Required') + "</td>"
+							html += "<td>" + html_checkbox('random', is_checked=pl_random) + "</td>"
+							html += "<td>" + html_input('play_function', pl_func) + "</td>"
+							html += "<td><button type='submit' class='btn btn-default'><span class='glyphicon glyphicon-ok'></span></button></td>"
+							html += "</div></form>"
+							html += "<form role='form' method='POST' action='/config'>"
+							html += html_hidden('id', pl_id) + html_hidden('do_delete', 'do_delete')
+							html += "<td><button type='submit' class='btn btn-warning'><span class='glyphicon glyphicon-trash'></span></button></td></tr></form>"
+
+						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+						html += "<tr><td>" + html_hidden('id', 'NEW') + html_input('name', '', 'Required') + "</td>"
+						html += "<td>" + html_input('url', '', 'Required') + "</td>"
+						html += "<td>" + html_checkbox('random', 0) + "</td>"
+						html += "<td>" + html_input('play_function', '') + "</td>"
+						html += "<td colspan='2'><button type='submit' class='btn btn-success'><span class='glyphicon glyphicon-plus'></span> Add new station</buton</td>"
+						html += "</tr></div></form>"
+						html += "</table></div>"
+
+						cur.execute("SELECT * FROM options")
+						html += "<form role='form' method='POST' action='/config'>\n<div class='form-group'>\n"
+						html += html_hidden('table_is_options', 'options')
+						html += "<div class='panel panel-default'><div class='panel-heading''>"
+						html += "<div class='input-group'>"
+						html += "<span class='input-group-addon'>Radio Configuration</span>"
+						html += "<span class='input-group-btn'><button type='submit' class='btn btn-success'><span class='glyphicon glyphicon-ok'></span> Save</button></span></div>"
+						html += "</div>"
+						html += "<table class='table'>"
+						html += "<tr><th>Option</th><th>Setting</th><th></th></tr>"
+						while True:
+							row = cur.fetchone()
+							if row == None:
+								break
+
+							(opt_name_u, opt_val_u) = row
+							opt_name = str(opt_name_u)
+
+							(opt_type,opt_default) = config_defaults.defaults[opt_name]
+							if type(opt_type) is type:
+								opt_val = opt_type(opt_val_u)
+							else:
+								opt_val = str(opt_val_u)
+
+							html += "<tr><td>" + opt_name + "</td>"
+							if opt_type is bool:
+								html += "<td>" + html_checkbox(opt_name, is_checked=(int(opt_val) == 1)) + "</td>"
+							elif type(opt_type) is tuple:
+								html += "<td>" + html_select(opt_name, opt_type, opt_val) + "</td>"
+							else:
+								html += "<td>" + html_input(opt_name, opt_val, str(opt_default)) + "</td>"
+
+							html += "<td><!--<a href='#' class='btn btn-default'><span class='glyphicon glyphicon-refresh'></span> Default</a>--></td></tr>"
+						html += "</table></div></form>"
+						html += HTML_FOOTER
+				except IOError as e:
+					html = "Nope: " + str(e)
+				
+			else:
+				source = open('index.html', 'r')
+				html = '\n'.join(source.readlines())
+				source.close()
+		except IOError:
+			logging.error(self.__class__.__name__ + "> Can't read index.html")
+			html = "Can't read index.html"
+			
+		self.send_response(200)
+		self.send_header("Content-type", "text/html")
+		self.send_header("Content-length", len(html))
 		self.end_headers()
-		self.wfile.write(content)
+		self.wfile.write(html)
 
 #End of IndexOnlyHandler
 
