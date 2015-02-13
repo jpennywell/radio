@@ -17,12 +17,12 @@ def main():
 	DialLed = led.Led(pin=opt_ldr.fetch('LED_DIAL_PIN'))
 	DialLed.svc_setup(port=opt_ldr.fetch('LED_DIAL_PORT'))
 	DialLed.svc_loop()
-	logging.debug('[ Led ] One Loop begun.')
+	logging.debug('[ Led ] One Loop begun on port ' + str(opt_ldr.fetch('LED_DIAL_PORT')))
 
 	PowerLed = led.Led(pin=opt_ldr.fetch('LED_POWER_PIN'))
 	PowerLed.svc_setup(port=opt_ldr.fetch('LED_POWER_PORT'))
 	PowerLed.svc_loop()
-	logging.debug('[ Led ] Two Loop begun.')
+	logging.debug('[ Led ] Two Loop begun on port ' + str(opt_ldr.fetch('LED_POWER_PORT')))
 
 	try:
 		while True:

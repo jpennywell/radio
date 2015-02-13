@@ -29,6 +29,8 @@ def main():
 	server.svc_setup(port=opt_ldr.fetch('WEB_LISTEN_PORT'))
 	server.svc_loop()
 
+	logging.debug('[ Web ] Loop service started on port ' + str(opt_ldr.fetch('WEB_LISTEN_PORT')))
+
 	try:
 		while True:
 			pass
