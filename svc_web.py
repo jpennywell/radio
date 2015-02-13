@@ -25,9 +25,11 @@ def main():
 
 	web_host = get_ip_address(opt_ldr.fetch('WEB_INTERFACE'))
 
-	server = www.RadioWebServer(web_host, opt_ldr.fetch('WEB_HTTP_PORT'), opt_ldr.fetch('WEB_ROOT'))
+	server = www.RadioWebServer(web_host, opt_ldr.fetch('WEB_HTTP_PORT'))
 	server.svc_setup(port=opt_ldr.fetch('WEB_LISTEN_PORT'))
 	server.svc_loop()
+
+	logging.debug('[ Web ] Loop service started on port ' + str(opt_ldr.fetch('WEB_LISTEN_PORT')))
 
 	try:
 		while True:

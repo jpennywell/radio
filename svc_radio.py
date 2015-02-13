@@ -6,7 +6,7 @@ This connects to an mpd server and plays configured playlists using
 some hardware knobs (volume & tuning).
 
 Turning the volume below a set tolerance for a set amount of time
-will shut down the RPi. (Values set in radio_config.py)
+will shut down the RPi.
 
 Todo:
 
@@ -15,6 +15,14 @@ Todo:
 	> Error-test tuning.
 
 """
+
+def wjsv_queue(mpd):
+        import time
+        cur_hour = time.localtime()[3] - 6
+        cur_time = time.localtime()[4]*60
+        mpd.play(cur_hour)
+        mpd.seekcur(cur_time)
+
 
 try:
 	import logging, os, sys, time, signal, math, random, socket, sqlite3
@@ -37,13 +45,11 @@ if (os.getuid() != 0):
 opt_ldr = OL.OptionLoader('config.db')
 
 try:
-	"""
-	Reset/truncate the log file
-	"""
+	# Reset/truncate the log file
 	with open('radio.log', 'w'):
 		pass
 
-	logging.basicConfig(level=getattr(logging, opt_ldr.fetch(LOG_LEVEL)))
+	logging.basicConfig(level=getattr(logging, opt_ldr.fetch('LOG_LEVEL')))
 except IOError as e:
 	logging.critical("[ Radio ] Can't open log file for write: " + str(e))
 
@@ -191,13 +197,19 @@ def main(argv):
 				"""
 				if pot_notif.is_new_station:
 					try:
-						(st_name, st_random, st_play_func) = tuner_knob.station_list[tuner_knob.SID]
+						station_data = tuner_knob.station_list[tuner_knob.SID]
+						st_name = str(station_data[1])
+						st_path = str(station_data[2])
+						if (st_path[-3:] == 'm3u'):
+							st_path = st_path[:-4]
+						st_random = (station_data[3] is not None)
+						st_play_func = str(station_data[4])
 
 						player.ready()
 						player.clear()
 
-						logging.info("[ Radio ] Load " + st_name)
-						player.load(st_name)
+						logging.info("[ Radio ] Load " + st_path)
+						player.load(st_path)
 						player.random(1 if st_random else 0)
 
 						if (st_random):
@@ -209,8 +221,8 @@ def main(argv):
 
 						logging.info("[ Radio ] Playing " + str(sid))
 
-						if (callable(st_play_func)):
-							st_play_func(player)
+						if (callable(eval(st_play_func))):
+							eval(st_play_func)(player)
 						else:
 							player.play(sid)
 
@@ -221,16 +233,15 @@ def main(argv):
 							songdata = player.currentsong()
 							status = player.status()
 							senddata = dict()
-							senddata['artist'] = songdata['artist']
-							senddata['album'] = songdata['album']
-							senddata['title'] = songdata['title']
-							senddata['file'] = songdata['file']
-							senddata['elapsed'] = status['elapsed']
-							senddata['time'] = songdata['time']
-							cl_web_server.send(['indexhtml', senddata])
+							keys = ('artist','album','title','file','elapsed','time')
+							for k in keys:
+								if k in songdata:
+									senddata[k] = songdata[k]
+							cl_web_server.send(['html', senddata])
 
 					except rmpd.CommandError as e:
 						logging.error("[ Radio ] mpd:Error load " + st_name + ":" + str(e))
+						pass
 					except ValueError as e:
 						logging.error("[ Radio ]  ValueError on play " + st_name + ": " + str(e))
 					except IOError as e:
@@ -286,9 +297,9 @@ def main(argv):
 #		logging.critical("main()> RuntimeError: " + str(e))
 #	except Exception as e:
 #		print(str(e))
-	finally:
-		logging.debug("[ Radio ] main() Finished. Return 0")
-		return 0
+#	finally:
+#		logging.debug("[ Radio ] main() Finished. Return 0")
+#		return 0
 
 #End of main()
 

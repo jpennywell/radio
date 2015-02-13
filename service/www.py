@@ -7,6 +7,8 @@ import BaseHTTPServer, cgi, logging, threading, urllib2
 import socket, fcntl, struct, os
 import sqlite3
 
+from . import option_loader as OL
+
 try:
     import simplejson as json
 except ImportError:
@@ -259,10 +261,14 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				try:
 					o_name = data['name']
 					o_value = data['value']
+
+					#opt_ldr = OL.OptionLoader('config.db')
+					#if opt_ldr.option_exists(o_name) and opt_ldr.val_type_ok(o_name, o_value):
+					#	opt_ldr.set(o_name, o_value)
+
 					sql = "UPDATE options SET value=? WHERE option='" + str(o_name) + "'"
 					args = (o_value,)
 					quick_query(sql, args)
-					print "here"
 					self.push_output('SQL Success', 200, 'application/json')
 					return
 				except KeyError:
@@ -289,6 +295,9 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			if table == 'options':
 				pre_html = html_panel('panel-success', "Success", "Options saved.")
 				for key in otherkeys:
+					#key_value = form.getvalue(key)
+					#if opt_ldr.option_exists(key) and opt_ldr.val_type_ok(key, key_value):
+					#	opt_ldr.set(str(key), form.getvalue(key))
 					sql = "UPDATE options SET value=? WHERE option='"+str(key)+"'"
 					args = (form.getvalue(key),)
 					quick_query(sql, args)
