@@ -178,12 +178,21 @@ def main(argv):
 							)/(0.25*self.cfg_st_radius) ) ), 2)
 						"""
 						r = tuner_knob.cfg_st_radius
+						g = tuner_knob.cfg_st_gap
+						fac = opt_ldr.fetch('GAP_FACTOR')
+						num_st = len(tuner_knob.station_list)
 						d = abs(tuner_knob.tuning - tuner_knob.tuned_to())
-						vol_adj = round(0.5 * (1 + math.erf(3.64 - 4*d/r)), 2)
+#						vol_adj = round(0.5 * (1 + math.erf(3.64 - 4*d/r)), 2)
+						vol_adj = math.exp((fac * num_st * (g + r) - d**2)/700)
 					except (ArithmeticError, FloatingPointError, ZeroDivisionError) as e:
 						logging.error("[ Radio ] Math error: " + str(e))
 						vol_adj = 1.0
 				else:
+					vol_adj = 0
+
+				if vol_adj > 1:
+					vol_adj = 1
+				if vol_adj < 0:
 					vol_adj = 0
 
 				vol_knob.volume_cap = vol_adj * vol_knob.volume
@@ -205,26 +214,17 @@ def main(argv):
 						st_random = (station_data[3] is not None)
 						st_play_func = str(station_data[4])
 
+						logging.info("[ Radio ] Load " + st_path)
 						player.ready()
 						player.clear()
-
-						logging.info("[ Radio ] Load " + st_path)
 						player.load(st_path)
-						player.random(1 if st_random else 0)
-
 						if (st_random):
-							sid = random.randrange(0,
-									len(player.playlist()) - 1,
-									1)
-						else:
-							sid = 0
-
-						logging.info("[ Radio ] Playing " + str(sid))
+							player.shuffle()
 
 						if (callable(eval(st_play_func))):
 							eval(st_play_func)(player)
 						else:
-							player.play(sid)
+							player.play()
 
 						"""
 						Update the web server

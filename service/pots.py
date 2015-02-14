@@ -182,7 +182,7 @@ This extends PotReader.
 """
 class TunerPotReader(PotReader):
 
-	smooth_fac = 0.9
+	smooth_fac = 1
 
 	"""
 	Gap between stations, measured in pot ticks (0 - 1023)
