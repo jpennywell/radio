@@ -207,19 +207,10 @@ def main(argv):
 				"""
 				Prepare backup stream
 				"""
-				tuning_direction = tuner_knob.tuning - tuner_knob.tuned_to()
-				if tuning_direction > 0:
-					"""
-					Tuned on the right of the station, so load the next station to the right
-					"""
-				elif tuning_direction < 0:
-					"""
-					Tuned on the left of the station, so load the next station to the left
-					"""
-				else:
-					"""
-					Tuned to the station exactly. Do no loading.
-					"""
+				(st_L, st_R) = tuner_knob.get_closest_freqs()
+				if st_L == tuner_knob.tuned_to():
+					pass
+				elif st_R == tuner_knob.tuned_to():
 					pass
 
 				"""
