@@ -81,7 +81,6 @@ def main(argv):
 		logging.debug('[ Radio ] DialView started.')
 		text_dial = dialview.DialView()
 
-
 		try:
 			logging.debug('[ Radio ] Connecting to dial Led service')
 			cl_dial_led = Client( (opt_ldr.fetch('LED_HOST'), opt_ldr.fetch('LED_DIAL_PORT')) )
@@ -104,8 +103,12 @@ def main(argv):
 			station_set = cur.fetchall()
 		tuner_knob = pots.TunerPotReader(opt_ldr.fetch('TUNE_POT_ADC'), station_set)
 
-		logging.debug('[ Radio ] Starting MPD client')
-		player = rmpd.RadioMPDClient(opt_ldr.fetch('MPD_HOST'), opt_ldr.fetch('MPD_PORT'))
+		logging.debug('[ Radio ] Starting MPD stream manager')
+		str_man = rmpd.StreamManager()
+		str_man.add_stream(opt_ldr.fetch('MPD_HOST'), opt_ldr.fetch('MPD_PORT'))
+		str_man.add_stream(opt_ldr.fetch('MPD_HOST'), opt_ldr.fetch('MPD_PORT') + 1)
+		active_stream_id = 0
+		backup_stream_id = 1
 
 		logging.debug("[ Radio ] Startup Ok")
 
@@ -124,8 +127,6 @@ def main(argv):
 		player.ready()
 
 		logging.debug("[ Radio ] Main loop.")
-
-		vol_knob.buffer_len = 1
 
 		while True:
 			"""
@@ -202,6 +203,24 @@ def main(argv):
 
 				if cl_dial_led is not None:
 					cl_dial_led.send(['adjust_brightness', vol_adj])
+
+				"""
+				Prepare backup stream
+				"""
+				tuning_direction = tuner_knob.tuning - tuner_knob.tuned_to()
+				if tuning_direction > 0:
+					"""
+					Tuned on the right of the station, so load the next station to the right
+					"""
+				elif tuning_direction < 0:
+					"""
+					Tuned on the left of the station, so load the next station to the left
+					"""
+				else:
+					"""
+					Tuned to the station exactly. Do no loading.
+					"""
+					pass
 
 				"""
 				Update the MPD server.
