@@ -125,6 +125,8 @@ def main(argv):
 
 		logging.debug("[ Radio ] Main loop.")
 
+		vol_knob.buffer_len = 1
+
 		while True:
 			"""
 			1.	Read the volume pot.
@@ -255,7 +257,7 @@ def main(argv):
 			"""
 			if opt_ldr.fetch('SHOW_DIAL'):
 				text_dial.display(vol_knob, tuner_knob)
-			time.sleep(0.25)
+			time.sleep(0.2)
 		#end while
 	except IOError as e:
 		logging.error("[ Radio ] Can't send data to listener: " + str(e))
