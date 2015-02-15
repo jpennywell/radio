@@ -74,7 +74,6 @@ class PotReader(object):
 		if self.options.fetch('ENABLE_SPI'):
 			self.enable_spi()
 
-
 	def update(self, pot_val):
 		"""
 		Store the pot value.
@@ -166,10 +165,15 @@ class PotReader(object):
 		else:
 			pot_read = self._readadc(self.pot_pin, self.options.fetch('SPICLK'), self.options.fetch('SPIMOSI'), self.options.fetch('SPIMISO'), self.options.fetch('SPICS'))
 
-		smoothed_read = int(self.smooth_fac * pot_read + (1 - self.smooth_fac) * self.last_read)
-		# self.last_read = smoothed_read #Done by self.update()
-		self.update(smoothed_read)
+#		if len(self.buffer_vals) > self.buffer_len:
+#			self.buffer_vals.pop(0)
+#		self.buffer_vals.append(pot_read)
+#		avg_read = reduce(lambda x, y: x + y, self.buffer_vals) / len(self.buffer_vals)
+#		self.update(avg_read)
+#		return avg_read
 
+		smoothed_read = int(self.smooth_fac * pot_read + (1 - self.smooth_fac) * self.last_read)
+		self.update(smoothed_read)
 		return smoothed_read
 
 # End of class PotReader
@@ -214,6 +218,11 @@ class TunerPotReader(PotReader):
 	"""
 	SID = -1
 
+	"""
+	Ignore some bad pot values for station frequencies
+	"""
+	cutoff_bottom = 120
+	cutoff_top = 918
 
 	def __init__(self, pin, stations):
 		super(TunerPotReader, self).__init__(pin)
@@ -242,9 +251,9 @@ class TunerPotReader(PotReader):
 			len_gaps = GAP_FACTOR * len_radii.
 
 		We solve then
-			1023 = num_gaps * len_gaps + num_radii * len_radii
-			1023 = num_st * len_radii * GAP_FACTOR + num_st * len_radii * 2
-			len_radii = 1023 / (num_st * (GAP_FACTOR + 2))
+			(max_pot - min_pot) = num_gaps * len_gaps + num_radii * len_radii
+			(max_pot - min_pot) = num_st * len_radii * GAP_FACTOR + num_st * len_radii * 2
+			len_radii = (max_pot - min_pot) / (num_st * (GAP_FACTOR + 2))
 
 		We then calculate our dial frequencies as starting at .5g + r, and
 		increasing by two radii and a gap:
@@ -253,12 +262,12 @@ class TunerPotReader(PotReader):
 			.5g r1r g r2r g r3
 		"""
 		num_st = len(self.station_list)
-		self.cfg_st_radius = 1023 / (num_st * (self.options.fetch('GAP_FACTOR') + 2))
+		self.cfg_st_radius = (self.cutoff_top - self.cutoff_bottom) / (num_st * (self.options.fetch('GAP_FACTOR') + 2))
 		self.cfg_st_gap = self.cfg_st_radius * self.options.fetch('GAP_FACTOR')
 
 		for t in range(0, len(self.station_list), 1):
-			fr = (0.5 * self.cfg_st_gap + self.cfg_st_radius) + \
-					t * (2 * self.cfg_st_radius + self.cfg_st_gap)
+			fr = self.cutoff_bottom + (0.5 * self.cfg_st_gap + self.cfg_st_radius) + \
+							t * (2 * self.cfg_st_radius + self.cfg_st_gap)
 			self.freq_list.append(fr)
 
 
