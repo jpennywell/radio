@@ -10,28 +10,26 @@ class CommandError(mpd.CommandError):
 
 
 """
-RadioStream
+StreamServer
 
 This extends the mpd.MPDClient class.
 
 Adds a 'ready' method that ensures that the client is still connected.
 """
-class RadioStream(mpd.MPDClient):
+class StreamServer(mpd.MPDClient):
 
 	rmpd_host = ''
 	rmpd_port = 0
 
-	active = 0
-
 	snd_output_id = 0
 
-	stream_id = -1
 
 	def __init__(self, host, port):
 		self.rmpd_host = host
 		self.rmpd_port = port
 
-		super(RadioStream, self).__init__()
+		super(StreamServer, self).__init__()
+
 
 	def ready(self):
 		'''
@@ -51,104 +49,132 @@ class RadioStream(mpd.MPDClient):
 					logging.error(self.__class__.__name__ + "> mpd: Still can't connect.")
 					sys.exit(0)
 
-# End of class RadioStream
+# End of class StreamServer
 
+
+"""
+class Stream
+
+A basic data-object for a stream.
+"""
+class Stream():
+	name = ''
+	playlist = ''
+	play_func = None
+
+	def __init__(self, name, playlist, play_func = None):
+		self.name = name
+		self.playlist = playlist
+		self.play_func = play_func
+
+
+"""
+class StreamManager
+
+Manages a set of streams (eg. stations)
+and a set of servers, and manages the switching between
+the streams, spread across the servers.
+
+Either streams of servers can be larger.
+"""
 class StreamManager():
+	num_servers = 2
+
+	active_server = 0
+	servers = []
+
+	active_stream = 0
 	streams = []
 
-	active_stream_id = 0
+	stream_map_to = {}
+
 
 	def __init__(self):
-		pass
+		for i in range(0, self.num_servers):
+			self.servers.append(StreamServer(host, starting_port + i))
 
-	def add_stream(self, host, port):
-		try:
-			stream = RadioStream(host, port)
-			self.streams.append(stream)
-			stream.stream_id = len(self.streams) - 1
-			return stream
-		except mpd.ConnectionError:
-			return False
+
+	def add_stream(self, name, playlist, play_func = None):
+		self.streams.append(Stream(name, playlist, play_func))
+
 
 	def del_stream(self, stream_id):
 		try:
-			stream = self.streams[stream_id]
-			stream.close()
-			return True
+			self.streams.pop(stream_id)
 		except KeyError:
+			pass
+
+
+	def load_stream(self, stream_id):
+		"""
+		Make sure stream_id is not already assigned.
+		"""
+		if stream_id not in self.stream_map_to:
+			try:
+				"""
+				Make sure that this stream exists.
+				"""
+				stream = self.streams[stream_id]
+			except KeyError:
+				return False
+
+			"""
+			Find an empty server, or at least the inactive one.
+			Reverse the stream map to find assigned servers.
+			If there are no servers unassigned, find an inactive one.
+			If there is no inactive server (when self.num_servers == 1), then
+			just load onto that one.
+			"""
+			assigned_svrs = dict((v,k) for k, v in self.stream_map_to.iteritems())
+			unassigned_svrs = set(range(0, self.num_servers)) - set(assigned_svrs.keys()) - set([self.active_server])
+			try:
+				svr_id = list(unassigned_svrs)[0]
+			except KeyError:
+				inactive_svrs = set(range(0, self.num_servers)) - set([self.active_server])
+				try:
+					svr_id = list(inactive_svrs)[0]
+				except KeyError:
+					svr_id = 0
+
+			svr = self.servers[svr_id]
+			svr.ready()
+			svr.clear()
+			svr.load(stream.playlist)
+
+			self.stream_map_to[stream_id] = svr_id
+
+
+	def switch_stream(self, stream_id):
+		if stream_id not in self.stream_map_to:
+			self.load_stream(stream_id)	
+
+		try:
+			self.stop_stream(self.active_stream)
+			self.start_stream(stream_id)
+			self.active_stream = stream_id
+		except mpd.CommandError:
 			return False
+
 
 	def start_stream(self, stream_id):
 		try:
-			stream = self.streams[stream_id]
-			stream.ready()
-			stream.enableoutput(stream.snd_output_id)
-			stream.play()
-			stream.active = 1
+			svr_id = self.stream_map_to[stream_id]
+			svr = self.servers[svr_id]
+			svr.ready()
+			svr.enableoutput(svr.snd_output_id)
+			svr.play()
+			self.active_server = svr_id
 		except KeyError:
 			return False
-		except mpd.CommandError:
-			return False
+
 
 	def stop_stream(self, stream_id):
 		try:
-			stream = self.streams[stream_id]
-			stream.ready()
-			stream.disableoutput(stream.snd_output_id)
-			stream.active = 0
+			svr_id = self.stream_map_to[stream_id]
+			svr = self.servers[svr_id]
+			svr.ready()
+			svr.disableoutput(svr.snd_output_id)
 		except KeyError:
-			return False
-		except mpd.CommandError:
-			return False
-
-	def switch_stream(self, stream_id):
-		old_act_id = self.active_stream_id
-
-		if stream_id == self.active_stream_id:
-			if self.streams[self.active_stream_id].active == 1:
-				return True
-			else:
-				self.start_stream(self.active_stream_id)
-
-		self.stop_stream(self.active_stream_id)
-		self.start_stream(stream_id)
-		self.active_stream_id = stream_id
-
-		return True
-
-
-	def next_stream(self):
-		new_id = self.active_stream_id + 1
-		if new_id > len(self.streams) - 1:
-			new_id = 0
-		if new_id == self.active_stream_id:
-			return
-		self.switch_stream(new_id)
-
-
-	def prev_stream(self):
-		new_id = self.active_stream_id - 1
-		if new_id < 0:
-			new_id = len(self.streams) - 1
-		if new_id == self.active_stream_id:
-			return
-		self.switch_stream(new_id)
-
-
-	def load_playlist(self, stream_id, playlist, shuffle = False):
-		try:
-			stream = self.streams[stream_id]
-			stream.ready()
-			stream.clear()
-			stream.load(playlist)
-			if shuffle:
-				stream.shuffle()
-			stream.disableoutput(0)
-			stream.play()
-			
-		except KeyError:
-			return False
-		except mpd.CommandError:
 			return False
 
 
