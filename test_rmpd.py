@@ -1,30 +1,29 @@
 #!/usr/bin/env python
 
 import radio.rmpd as rmpd
+import service.option_loader as OL
 import sys, time
+import logging
 
-sm = rmpd.StreamManager()
+logging.basicConfig(level=logging.DEBUG)
 
-one = sm.add_stream('localhost', 6600)
-two = sm.add_stream('localhost', 6601)
+opt_ldr = OL.OptionLoader('config.db')
+host = opt_ldr.fetch('MPD_HOST')
+port = opt_ldr.fetch('MPD_PORT')
+print("Servers starting at " + host + ":" + str(port))
 
-if one == False or two == False:
-	print("Can't create streams")
-	sys.exit(0)
+sm = rmpd.StreamManager(host, port)
 
-print("Starting one stream:")
-sm.load_playlist(0, 'oldmusic')
-sm.start_stream(0)
+sm.add_stream('iTunes', 'itunes', True)
+sm.add_stream('Archive Radio', 'archiveradio')
+sm.add_stream('WJSV Full-Day', 'wjsv', False, 'play_by_seek')
+sm.add_stream('JAZZ FM', 'jazzfm')
 
-try:
-	stream_id = 0
-	while True:
-		print("Playing stream " + str(stream_id))
-		sm.switch_stream(stream_id)
-		print("Sleeping for 5s")
-		time.sleep(5)
-		stream_id += 1
-		if stream_id == 2:
-			stream_id = 0
-except KeyboardInterrupt:
-	sys.exit(0)
+print("Playing streams")
+for i in range(0, len(sm.streams)):
+	logging.debug("[ StreamManager ] : Playing stream " + str(i))
+	sm.switch_stream(i)
+	if i+1 < len(sm.streams): 
+		logging.debug("[ StreamManager ] : Preloading stream " + str(i+1))
+		sm.load_stream(i+1)
+	time.sleep(10)
