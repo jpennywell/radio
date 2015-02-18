@@ -200,4 +200,12 @@ class StreamManager():
 			return False
 
 
+	def query_server(self, cmd):
+		try:
+			act_svr = self.servers[self.active_server]
+			call = getattr(svr, cmd)
+			return svr.call()
+		except AttributeError, TypeError:
+			return False
+
 # End of class StreamManager
