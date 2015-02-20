@@ -3,7 +3,8 @@
 # http://blog.gocept.com/2011/08/04/shutting-down-an-httpserver/
 #
 
-import BaseHTTPServer, cgi, logging, threading, urllib2
+import http.server
+import cgi, logging, threading, urllib.request, urllib.error
 import socket, fcntl, struct
 import sqlite3
 
@@ -64,7 +65,7 @@ StoppableServer
 
 This HTTPServer has a keepalive flag that turns on/off the server.
 """
-class StoppableServer(BaseHTTPServer.HTTPServer):
+class StoppableServer(http.server.HTTPServer):
 	"""
 	While this is True, the server keeps running.
 	"""
@@ -84,8 +85,8 @@ class StoppableServer(BaseHTTPServer.HTTPServer):
 		self._keepalive = False
 
 		try:
-			urllib2.urlopen('http://%s:%s/' % (self.server_name, self.server_port))
-		except urllib2.URLError:
+			urllib.request.urlopen('http://%s:%s/' % (self.server_name, self.server_port))
+		except urllib.error.URLError:
 			pass
 
 		self.server_close()
@@ -185,7 +186,7 @@ IndexOnlyHandler
 
 A GET request handler that returns only the index.html file.
 """
-class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class CustomHandler(http.server.BaseHTTPRequestHandler):
 	def do_POST(self):
 		self.do_GET()
 
@@ -343,7 +344,7 @@ class CustomHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.send_header("Content-type", "text/html")
 		self.send_header("Content-length", len(html))
 		self.end_headers()
-		self.wfile.write(html)
+		self.wfile.write(bytes(html, 'UTF-8'))
 
 #End of IndexOnlyHandler
 

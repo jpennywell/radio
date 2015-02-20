@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Network Radio
 
@@ -16,14 +16,9 @@ Todo:
 
 """
 
-def wjsv_queue(mpd):
-        import time
-        cur_hour = time.localtime()[3] - 6
-        cur_time = time.localtime()[4]*60
-        mpd.play(cur_hour)
-        mpd.seekcur(cur_time)
-
-
+"""
+Imports
+"""
 try:
 	import logging, os, sys, time, signal, math, random, socket, sqlite3
 
@@ -38,10 +33,16 @@ except RuntimeError as e:
 	logging.critical("[ Radio ] Error loading an import: " + str(e))
 	sys.exit(0)
 
+"""
+Ensure run as root.
+"""
 if (os.getuid() != 0):
 	logging.critical("[ Radio ] This process must be run as root. Exiting.")
 	sys.exit(0)
 
+"""
+Open config database.
+"""
 opt_ldr = OL.OptionLoader('config.db')
 
 try:
@@ -54,7 +55,9 @@ except IOError as e:
 	logging.critical("[ Radio ] Can't open log file for write: " + str(e))
 
 
-
+"""
+An exception raised when we want to shutdown.
+"""
 class RadioCleanup(Exception):
 	pass
 
@@ -81,7 +84,6 @@ def main(argv):
 		logging.debug('[ Radio ] DialView started.')
 		text_dial = dialview.DialView()
 
-
 		try:
 			logging.debug('[ Radio ] Connecting to dial Led service')
 			cl_dial_led = Client( (opt_ldr.fetch('LED_HOST'), opt_ldr.fetch('LED_DIAL_PORT')) )
@@ -102,10 +104,15 @@ def main(argv):
 			cur = con.cursor()
 			cur.execute("SELECT * FROM playlists")
 			station_set = cur.fetchall()
-		tuner_knob = pots.TunerPotReader(opt_ldr.fetch('TUNE_POT_ADC'), station_set)
+		tuner_knob = pots.TunerPotReader(opt_ldr.fetch('TUNE_POT_ADC'), len(station_set))
 
-		logging.debug('[ Radio ] Starting MPD client')
-		player = rmpd.RadioMPDClient(opt_ldr.fetch('MPD_HOST'), opt_ldr.fetch('MPD_PORT'))
+		logging.debug('[ Radio ] Starting MPD stream manager')
+		str_host = opt_ldr.fetch('MPD_HOST')
+		str_port = opt_ldr.fetch('MPD_PORT')
+		str_man = rmpd.StreamManager(str_host, str_port)
+		for st in station_set:
+			(name, playlist, random, play_func) = st[1:]
+			str_man.add_stream(str(name), str(playlist), bool(random), str(play_func))
 
 		logging.debug("[ Radio ] Startup Ok")
 
@@ -115,17 +122,15 @@ def main(argv):
 		logging.debug("[ Radio ] PowerLed flicker on.")
 		cl_power_led.send('flicker')
 
-		logging.debug(tuner_knob.freq_list)
-		logging.debug(tuner_knob.station_list)
+#		logging.debug(tuner_knob.freq_list)
+#		logging.debug(tuner_knob.station_list)
 
 		logging.debug("[ Radio ] Waiting for dial led to finish...")
 		cl_dial_led.send('wait_for_done')
 
-		player.ready()
+#		player.ready()
 
 		logging.debug("[ Radio ] Main loop.")
-
-		vol_knob.buffer_len = 1
 
 		while True:
 			"""
@@ -208,38 +213,49 @@ def main(argv):
 				"""
 				if pot_notif.is_new_station:
 					try:
-						station_data = tuner_knob.station_list[tuner_knob.SID]
-						st_name = str(station_data[1])
-						st_path = str(station_data[2])
-						if (st_path[-3:] == 'm3u'):
-							st_path = st_path[:-4]
-						st_random = (station_data[3] is not None)
-						st_play_func = str(station_data[4])
+						"""
+						Prepare backup stream.
+						If tuned to the left, pre-load the right-most station,
+						and vice-versa.
+						If tuned to the first station (L or R of it),
+						then pre-load station #2.
+						If tuned to the last station (L or R of it),
+						then pre-load station before it.
+						"""
+						station_id = tuner_knob.SID
 
-						logging.info("[ Radio ] Load " + st_path)
-						player.ready()
-						player.clear()
-						player.load(st_path)
-						if (st_random):
-							player.shuffle()
+						st_id_L = station_id - 1
+						if st_id_L < 0:
+							st_id_L = station_id + 1
 
-						if (callable(eval(st_play_func))):
-							eval(st_play_func)(player)
-						else:
-							player.play()
+						st_id_R = station_id + 1
+						if st_id_R > len(str_man.streams):
+							st_id_L = station_id - 1
+
+						str_man.switch_stream(tuner_knob.SID)
+
+						(st_L, st_R) = tuner_knob.get_closest_freqs()
+						if st_L == tuner_knob.tuned_to():
+							str_man.load_stream(st_id_R)
+							print(">>>>>>>>>> R load")
+						elif st_R == tuner_knob.tuned_to():
+							str_man.load_stream(st_id_R)
+							print(">>>>>>>>>> L load")
+
 
 						"""
 						Update the web server
 						"""
 						if cl_web_server is not None:
-							songdata = player.currentsong()
-							status = player.status()
+							songdata = str_man.query_server('currentsong')
+							status = str_man.query_server('status')
 							senddata = dict()
 							keys = ('artist','album','title','file','elapsed','time')
 							for k in keys:
 								if k in songdata:
 									senddata[k] = songdata[k]
 							cl_web_server.send(['html', senddata])
+							print(">>>>>>>>>>> U done")
 
 					except rmpd.CommandError as e:
 						logging.error("[ Radio ] mpd:Error load " + st_name + ":" + str(e))
@@ -276,10 +292,10 @@ def main(argv):
 				cl_dial_led.send('off')
 
 			logging.debug("[ Radio ] Stop MPD client")
-			player.ready()
-			player.stop() 
-			player.close()
-			player.disconnect()
+#			player.ready()
+#			player.stop() 
+#			player.close()
+#			player.disconnect()
 		except Exception as e:
 			logging.critical("[ Radio ] ERROR! Can't stop a service: " + str(e))
 		finally:
@@ -290,18 +306,18 @@ def main(argv):
 
 		return 0
 
-#	except OSError as e:
-#		"""
-#		This is probably because we can't read the music directory?"
-#		"""
-#		logging.critical("main()> OSError: " + str(e)) 
-#	except RuntimeError as e:
-#		logging.critical("main()> RuntimeError: " + str(e))
-#	except Exception as e:
-#		print(str(e))
-#	finally:
-#		logging.debug("[ Radio ] main() Finished. Return 0")
-#		return 0
+	except OSError as e:
+		"""
+		This is probably because we can't read the music directory?"
+		"""
+		logging.critical("main()> OSError: " + str(e)) 
+	except RuntimeError as e:
+		logging.critical("main()> RuntimeError: " + str(e))
+	except Exception as e:
+		print(str(e))
+	finally:
+		logging.debug("[ Radio ] main() Finished. Return 0")
+		return 0
 
 #End of main()
 

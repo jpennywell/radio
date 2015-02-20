@@ -1,5 +1,5 @@
 import RPi.GPIO as GPIO
-import os, spidev, math
+import os, math
 from . import option_loader as OL
 
 """
@@ -180,7 +180,7 @@ class PotReader(object):
 
 
 """
-TunerKnob
+TunerPotReader
 
 This extends PotReader.
 """
@@ -199,8 +199,11 @@ class TunerPotReader(PotReader):
 	cfg_st_radius = 100 
 
 	"""
-	Will hold the list of stations
+	The number of stations to setup.
 	"""
+	num_stations = 0
+
+
 	station_list = []
 
 	"""
@@ -224,21 +227,16 @@ class TunerPotReader(PotReader):
 	cutoff_bottom = 120
 	cutoff_top = 918
 
-	def __init__(self, pin, stations):
+	def __init__(self, pin, num_stations):
 		super(TunerPotReader, self).__init__(pin)
 
-		"""
-		Populate self.station_list with the station data, and
-		Calculate dial frequencies.
-		"""
 		self.pot_pin = pin
 
-		self.station_list.extend(stations)
-		num_st = len(self.station_list)
+		self.num_stations = num_stations
 
 		"""
 		We setup our dial with each station's tuning in an interval of radius
-		self.cfg_st_radius, separated by a gap of size self.cfg_st_gap.
+		elf.cfg_st_radius, separated by a gap of size self.cfg_st_gap.
 
 		For three stations, the dial will be separated as:
 			.5g r1r g r2r g r3r .5g,
@@ -261,11 +259,11 @@ class TunerPotReader(PotReader):
 			.5g r1r g r2
 			.5g r1r g r2r g r3
 		"""
-		num_st = len(self.station_list)
+		num_st = self.num_stations
 		self.cfg_st_radius = (self.cutoff_top - self.cutoff_bottom) / (num_st * (self.options.fetch('GAP_FACTOR') + 2))
 		self.cfg_st_gap = self.cfg_st_radius * self.options.fetch('GAP_FACTOR')
 
-		for t in range(0, len(self.station_list), 1):
+		for t in range(0, self.num_stations, 1):
 			fr = self.cutoff_bottom + (0.5 * self.cfg_st_gap + self.cfg_st_radius) + \
 							t * (2 * self.cfg_st_radius + self.cfg_st_gap)
 			self.freq_list.append(fr)
