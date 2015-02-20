@@ -71,8 +71,10 @@ class PotReader(object):
 
 		self.pot_pin = pin
 
-		if self.options.fetch('ENABLE_SPI'):
-			self.enable_spi()
+		# We don't use SPI, so we'll just deprecate this.
+		#
+		# if self.options.fetch('ENABLE_SPI'):
+		#	self.enable_spi()
 
 	def update(self, pot_val):
 		"""
