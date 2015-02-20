@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Network Radio
 
@@ -107,7 +107,9 @@ def main(argv):
 		tuner_knob = pots.TunerPotReader(opt_ldr.fetch('TUNE_POT_ADC'), len(station_set))
 
 		logging.debug('[ Radio ] Starting MPD stream manager')
-		str_man = rmpd.StreamManager()
+		str_host = opt_ldr.fetch('MPD_HOST')
+		str_port = opt_ldr.fetch('MPD_PORT')
+		str_man = rmpd.StreamManager(str_host, str_port)
 		for st in station_set:
 			(name, playlist, random, play_func) = st[1:]
 			str_man.add_stream(str(name), str(playlist), bool(random), str(play_func))
@@ -126,7 +128,7 @@ def main(argv):
 		logging.debug("[ Radio ] Waiting for dial led to finish...")
 		cl_dial_led.send('wait_for_done')
 
-		player.ready()
+#		player.ready()
 
 		logging.debug("[ Radio ] Main loop.")
 
@@ -235,8 +237,10 @@ def main(argv):
 						(st_L, st_R) = tuner_knob.get_closest_freqs()
 						if st_L == tuner_knob.tuned_to():
 							str_man.load_stream(st_id_R)
+							print(">>>>>>>>>> R load")
 						elif st_R == tuner_knob.tuned_to():
 							str_man.load_stream(st_id_R)
+							print(">>>>>>>>>> L load")
 
 
 						"""
@@ -251,6 +255,7 @@ def main(argv):
 								if k in songdata:
 									senddata[k] = songdata[k]
 							cl_web_server.send(['html', senddata])
+							print(">>>>>>>>>>> U done")
 
 					except rmpd.CommandError as e:
 						logging.error("[ Radio ] mpd:Error load " + st_name + ":" + str(e))
@@ -287,10 +292,10 @@ def main(argv):
 				cl_dial_led.send('off')
 
 			logging.debug("[ Radio ] Stop MPD client")
-			player.ready()
-			player.stop() 
-			player.close()
-			player.disconnect()
+#			player.ready()
+#			player.stop() 
+#			player.close()
+#			player.disconnect()
 		except Exception as e:
 			logging.critical("[ Radio ] ERROR! Can't stop a service: " + str(e))
 		finally:

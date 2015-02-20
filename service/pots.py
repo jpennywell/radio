@@ -1,5 +1,5 @@
 import RPi.GPIO as GPIO
-import os, spidev, math
+import os, math
 from . import option_loader as OL
 
 """
@@ -180,7 +180,7 @@ class PotReader(object):
 
 
 """
-TunerKnob
+TunerPotReader
 
 This extends PotReader.
 """
@@ -202,6 +202,9 @@ class TunerPotReader(PotReader):
 	The number of stations to setup.
 	"""
 	num_stations = 0
+
+
+	station_list = []
 
 	"""
 	Will hold the list of 'frequencies', measured in pot ticks (0 - 1023)

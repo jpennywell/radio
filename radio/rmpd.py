@@ -51,10 +51,10 @@ class StreamServer(mpd.MPDClient):
 
 	def play_by_seek(self):
 		import time
-	        cur_hour = time.localtime()[3] - 6
-       		cur_time = time.localtime()[4]*60
-        	self.play(cur_hour)
-        	self.seekcur(cur_time)
+		cur_hour = time.localtime()[3] - 6
+		cur_time = time.localtime()[4]*60
+		self.play(cur_hour)
+		self.seekcur(cur_time)
 	
 # End of class StreamServer
 
@@ -139,7 +139,7 @@ class StreamManager():
 		If there is no inactive server (when self.num_servers == 1), then
 		just load onto that one.
 		"""
-		assigned_svrs = dict((v,k) for k, v in self.stream_map_to.iteritems())
+		assigned_svrs = dict((v,k) for k, v in iter(self.stream_map_to.items()))
 		unassigned_svrs = set(range(0, self.num_servers)) - set(assigned_svrs.keys()) - set([self.active_server])
 		try:
 			svr_id = list(unassigned_svrs)[0]
@@ -178,10 +178,10 @@ class StreamManager():
 			try:
 				play_func = getattr(svr, str(self.streams[stream_id].play_func))
 				svr.play_func()
-			except AttributeError, TypeError:
+			except (AttributeError, TypeError):
 				svr.play()
 			self.active_server = svr_id
-		except KeyError, IndexError:
+		except (KeyError, IndexError):
 			return False
 		except mpd.CommandError:
 			return False
@@ -194,7 +194,7 @@ class StreamManager():
 			svr = self.servers[svr_id]
 			svr.ready()
 			svr.disableoutput(svr.snd_output_id)
-		except KeyError, IndexError:
+		except (KeyError, IndexError):
 			return False
 		except mpd.CommandError:
 			return False
@@ -203,9 +203,9 @@ class StreamManager():
 	def query_server(self, cmd):
 		try:
 			act_svr = self.servers[self.active_server]
-			call = getattr(svr, cmd)
-			return svr.call()
-		except AttributeError, TypeError:
+			call = getattr(act_svr, cmd)
+			return act_svr.call()
+		except (AttributeError, TypeError):
 			return False
 
 # End of class StreamManager

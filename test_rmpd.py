@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import radio.rmpd as rmpd
 import service.option_loader as OL
