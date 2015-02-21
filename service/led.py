@@ -3,7 +3,6 @@ GPIO.setmode(GPIO.BCM)
 
 import math, logging, sys, threading, time, random
 
-from multiprocessing.connection import Listener, Client
 from array import array
 
 from . import service
@@ -36,7 +35,7 @@ class Led(service.Service):
 	''' OptionsLoader instance '''
 	options = None
 
-	def __init__(self, pin):
+	def __init__(self, queue, pin):
 		"""
 		Setup GPIO for this pin.
 		"""
@@ -44,6 +43,8 @@ class Led(service.Service):
 		GPIO.setup(self.pin, GPIO.OUT)
 
 		self.options = OL.OptionLoader('config.db')
+
+		super().__init__(queue)
 
 
 	def _discrete_change(self, toggle):
@@ -79,7 +80,10 @@ class Led(service.Service):
 			self.pwm = GPIO.PWM(self.pin, self.options.fetch('PWM_FREQ'))
 		self.pwm.start(0)
 
-		br = self.options.fetch('LED_MIN_DUTY') if p == 0 else p * self.options.fetch('LED_DUTY_CYCLE')
+		if p == 0:
+			br = self.options.fetch('LED_MIN_DUTY')
+		else:
+			br = p * self.options.fetch('LED_DUTY_CYCLE')
 		self.pwm.ChangeDutyCycle(br)
 
 
