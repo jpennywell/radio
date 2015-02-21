@@ -212,6 +212,7 @@ def main(argv):
 
 				dial_led_queue.put(['adjust_brightness', vol_adj])
 
+
 				"""
 				Update the MPD server.
 				"""
@@ -298,7 +299,7 @@ def main(argv):
 #	except RuntimeError as e:
 #		logging.critical("main()> RuntimeError: " + str(e))
 #	except Exception as e:
-#		print(str(e))
+#		logging.critical(str(e))
 #	finally:
 #		logging.debug("[ Radio ] main() Finished. Return 0")
 #		return 0

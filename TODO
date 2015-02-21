@@ -1,4 +1,4 @@
 Avoid spurious loading of playlists
 Add playlist detection to streams
 Separate station handling properly from TunerPotReader and StreamManager
-Fix spurious updates
+Fix spurious updates - bad pot reads
