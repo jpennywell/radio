@@ -7,20 +7,13 @@ some hardware knobs (volume & tuning).
 
 Turning the volume below a set tolerance for a set amount of time
 will shut down the RPi.
-
-Todo:
-
-	> Use Led's to indicate errors, shutdown process, etc.
-
-	> Error-test tuning.
-
 """
 
 """
 Imports
 """
 try:
-	import logging, os, sys, time, signal, math, queue, random, socket, sqlite3
+	import fcntl, logging, os, sys, time, signal, math, queue, random, socket, sqlite3, struct
 
 	import service.led
 	import service.www
@@ -55,11 +48,11 @@ except IOError as e:
 	logging.critical("[ Radio ] Can't open log file for write: " + str(e))
 
 
+
 class RadioCleanup(Exception):
 	pass
 
 
-import socket, fcntl, struct
 def get_ip_address(ifname):
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	return socket.inet_ntoa(fcntl.ioctl(
@@ -83,12 +76,7 @@ def main(argv):
 		"""
 		Setup the radio object, and begin startup routine.
 		"""
-#		signal.signal(signal.SIGTERM, radio_cleanup)
-
 		logging.debug('[ Radio ] Startup begun')
-
-		logging.debug('[ Radio ] DialView started.')
-		text_dial = radio.dialview.DialView()
 
 		logging.debug('[ Radio ] Starting LED service')
 		dial_led_queue = queue.Queue()
@@ -105,6 +93,9 @@ def main(argv):
 
 		logging.debug("[ Radio ] PowerLed flicker on.")
 		pwr_led_queue.put('flicker')
+
+		logging.debug('[ Radio ] DialView started.')
+		text_dial = radio.dialview.DialView()
 
 		logging.debug('[ Radio ] Starting WWW service')
 		web_svr_queue = queue.Queue()
@@ -210,7 +201,7 @@ def main(argv):
 				vol_knob.volume_cap = vol_adj * vol_knob.volume
 				vol_knob.volumize(vol_knob.volume_cap)
 
-				dial_led_queue.put(['adjust_brightness', vol_adj])
+#				dial_led_queue.put(['adjust_brightness', vol_adj])
 
 
 				"""
@@ -296,13 +287,8 @@ def main(argv):
 		This is probably because we can't read the music directory?"
 		"""
 		logging.critical("main()> OSError: " + str(e)) 
-#	except RuntimeError as e:
-#		logging.critical("main()> RuntimeError: " + str(e))
-#	except Exception as e:
-#		logging.critical(str(e))
-#	finally:
-#		logging.debug("[ Radio ] main() Finished. Return 0")
-#		return 0
+	except RuntimeError as e:
+		logging.critical("main()> RuntimeError: " + str(e))
 
 #End of main()
 
