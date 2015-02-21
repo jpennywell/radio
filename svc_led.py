@@ -28,7 +28,7 @@ def main():
 		while True:
 			pass
 	except KeyboardInterrupt as e:
-		logging.info("[ Led ] Ctrl-C: Quitting: " + str(e))
+		logging.info("[ Led ] Quitting: " + str(e))
 		DialLed.svc_cleanup()
 		DialLed.stop()
 

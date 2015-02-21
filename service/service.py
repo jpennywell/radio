@@ -1,6 +1,18 @@
 import threading, logging
 from multiprocessing.connection import Listener, Client
 
+class ServiceShutdown(Exception):
+	pass
+
+"""
+Service
+
+This class implements a socket Listener that takes incoming requests
+(as plain text) and if they're callable methods, calls them.
+
+Extend this to another class to allow the child class to receive
+these requests.
+"""
 class Service(object):
 	svc_keepalive = True
 
@@ -45,6 +57,7 @@ class Service(object):
 
 			if msg == 'QUIT':
 				conn.close()
+				raise ServiceShutdown()
 				break
 			elif isinstance(msg, list):
 				ACT = msg[0]
