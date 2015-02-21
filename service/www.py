@@ -104,7 +104,7 @@ class RadioWebServer(service.Service):
 	"""
 	server = False
 
-	def __init__(self, host, port):
+	def __init__(self, queue, host, port):
 		"""
 		Start a server in a thread.
 		"""
@@ -116,14 +116,16 @@ class RadioWebServer(service.Service):
 			self.server_t = threading.Thread(target=self.server.serve_until_shutdown)
 			self.server_t.daemon = True
 			self.server_t.start()
-			logging.info(self.__class__.__name__ + "> WWW service running at " + self.host + ':' + str(self.port))
+			logging.info("[ WWW ] WWW service running at " + self.host + ':' + str(self.port))
+
 		except sqlite3.OperationalError as e:
-			logging.critical(self.__class__.__name__ + "> Can't load config.db properly; " + str(e))
+			logging.critical("[ WWW ] Can't load config.db properly; " + str(e))
 		except Exception as e:
-			logging.critical(self.__class__.__name__ + "> Can't start web server: " + str(e))
+			logging.critical("[ WWW ] Can't start web server: " + str(e))
 
 		empty_data = {'':''}
 		self.html(empty_data)
+		super().__init__(queue)
 
 
 	def stop(self):
@@ -133,11 +135,11 @@ class RadioWebServer(service.Service):
 		if self.server is None:
 			return
 
-		logging.debug(self.__class__.__name__ + "> Shutting down server")
+		logging.debug("[ WWW ] Shutting down server")
 		self.server.shutdown()
-		logging.debug(self.__class__.__name__ + "> Joining thread....")
+		logging.debug("[ WWW ] Joining thread....")
 		self.server_t.join()
-		logging.debug(self.__class__.__name__ + "> ...thread done.")
+		logging.debug("[ WWW ] ...thread done.")
 
 
 	def html(self, data):
@@ -145,11 +147,11 @@ class RadioWebServer(service.Service):
 			target = open('index.html', 'w')
 			target.write(HTML_HEADER)
 
-			emptydata = {'artist':'Unknown', 'album':'Unknown', 'title':'Unknown', 'file':'Unknown', 'elapsed':0}
-							
-			for k in ('artist', 'album', 'title', 'file', 'elapsed'):
-				if k not in data:
-					data[k] = emptydata[k]
+			try:
+				emptydata = {'artist':'Unknown', 'album':'Unknown', 'title':'Unknown', 'file':'Unknown', 'elapsed':0}
+				data = dict(emptydata, **dict(data)) # Union of dicts
+			except TypeError:
+				data = emptydata
 
 			total_secs = int(data['elapsed'])
 			hours = total_secs // 3600
@@ -176,7 +178,7 @@ class RadioWebServer(service.Service):
 			target.write(HTML_FOOTER)
 			target.close()
 		except IOError as e:
-			logging.error(self.__class__.__name__ + "> Can't open index.html for write: [" + str(e) + "]")
+			logging.error("[ WWW ] Can't open index.html for write: [" + str(e) + "]")
 
 #End of RadioWebServer
 
@@ -249,7 +251,7 @@ class CustomHandler(http.server.BaseHTTPRequestHandler):
 								html += html_panel("DB Error", "Could not save data: " + str(e), 'panel-danger')
 							
 					except Exception as e:
-						logging.error("No form data: " + str(e))
+						logging.error("[ WWW ] No form data: " + str(e))
 
 					db_conn = sqlite3.connect('config.db')
 
@@ -337,7 +339,7 @@ class CustomHandler(http.server.BaseHTTPRequestHandler):
 				html = '\n'.join(source.readlines())
 				source.close()
 		except IOError:
-			logging.error(self.__class__.__name__ + "> Can't read index.html")
+			logging.error("[ WWW ] Can't read index.html")
 			html = "Can't read index.html"
 			
 		self.send_response(200)
