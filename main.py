@@ -183,7 +183,7 @@ def main(argv):
 						r = tuner_knob.cfg_st_radius
 						g = tuner_knob.cfg_st_gap
 						fac = opt_ldr.fetch('GAP_FACTOR')
-						num_st = len(tuner_knob.station_list)
+						num_st = len(str_man.streams)
 						d = abs(tuner_knob.tuning - tuner_knob.tuned_to())
 #						vol_adj = round(0.5 * (1 + math.erf(3.64 - 4*d/r)), 2)
 						vol_adj = math.exp((fac * num_st * (g + r) - d**2)/700)
@@ -198,10 +198,11 @@ def main(argv):
 				if vol_adj < 0:
 					vol_adj = 0
 
-				vol_knob.volume_cap = vol_adj * vol_knob.volume
-				vol_knob.volumize(vol_knob.volume_cap)
-
-#				dial_led_queue.put(['adjust_brightness', vol_adj])
+				d_vol = abs(int(vol_knob.volume_cap) - int(vol_adj * vol_knob.volume))
+				if d_vol > 1:
+					vol_knob.volume_cap = vol_adj * vol_knob.volume
+					vol_knob.volumize(vol_knob.volume_cap)
+					dial_led_queue.put(['adjust_brightness', vol_adj])
 
 
 				"""

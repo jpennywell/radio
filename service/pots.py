@@ -205,9 +205,6 @@ class TunerPotReader(PotReader):
 	"""
 	num_stations = 0
 
-
-	station_list = []
-
 	"""
 	Will hold the list of 'frequencies', measured in pot ticks (0 - 1023)
 	"""
