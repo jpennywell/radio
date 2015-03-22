@@ -33,7 +33,7 @@ class Service(threading.Thread):
 				break
 
 			try:
-				logging.debug("[ Service ] : Received command '" + str(cmd) + "'")
+#				logging.debug("[ Service ] : Received command '" + str(cmd) + "'")
 				call = getattr(self, cmd)
 				if callable(call):
 					if args is None:

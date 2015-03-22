@@ -15,6 +15,7 @@ Imports
 try:
 	import fcntl, logging, os, sys, time, signal, math, queue, random, socket, sqlite3, struct
 
+
 	import service.led
 	import service.www
 	import service.option_loader
@@ -40,7 +41,7 @@ opt_ldr = service.option_loader.OptionLoader('config.db')
 
 try:
 	# Reset/truncate the log file
-	with open('radio.log', 'w'):
+	with open('main.log', 'w'):
 		pass
 
 	logging.basicConfig(level=getattr(logging, opt_ldr.fetch('LOG_LEVEL')))
@@ -54,12 +55,12 @@ class RadioCleanup(Exception):
 
 
 def get_ip_address(ifname):
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	return socket.inet_ntoa(fcntl.ioctl(
-		s.fileno(),
-		0x8915,  # SIOCGIFADDR
-		struct.pack('256s', bytes(ifname[:15], 'UTF-8'))
-		)[20:24])
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        return socket.inet_ntoa(fcntl.ioctl(
+                s.fileno(),
+                0x8915,  # SIOCGIFADDR
+                struct.pack('256s', bytes(ifname[:15], 'UTF-8'))
+                )[20:24])
 
 
 	
@@ -71,6 +72,7 @@ def main(argv):
 	"""
 
 	do_system_shutdown = False
+	low_vol_start = -1
 
 	try:
 		"""
@@ -94,8 +96,9 @@ def main(argv):
 		logging.debug("[ Radio ] PowerLed flicker on.")
 		pwr_led_queue.put('flicker')
 
-		logging.debug('[ Radio ] DialView started.')
-		text_dial = radio.dialview.DialView()
+		if opt_ldr.fetch('SHOW_DIAL'):
+			logging.debug('[ Radio ] DialView started.')
+			text_dial = radio.dialview.DialView()
 
 		logging.debug('[ Radio ] Starting WWW service')
 		web_svr_queue = queue.Queue()
@@ -199,7 +202,7 @@ def main(argv):
 					vol_adj = 0
 
 				d_vol = abs(int(vol_knob.volume_cap) - int(vol_adj * vol_knob.volume))
-				if d_vol > 1:
+				if d_vol > 3:
 					vol_knob.volume_cap = vol_adj * vol_knob.volume
 					vol_knob.volumize(vol_knob.volume_cap)
 					dial_led_queue.put(['adjust_brightness', vol_adj])
@@ -229,6 +232,7 @@ def main(argv):
 						if st_id_R > len(str_man.streams):
 							st_id_L = station_id - 1
 
+						print("Switching")
 						str_man.switch_stream(tuner_knob.SID)
 
 						(st_L, st_R) = tuner_knob.get_closest_freqs()
@@ -260,10 +264,11 @@ def main(argv):
 
 
 			"""
-			3.	Finish the loop with a delay, and print any debug.
+			3.	Show a tuning dial if configured to do so; finish the loop with a delay.
 			"""
 			if opt_ldr.fetch('SHOW_DIAL'):
 				text_dial.display(vol_knob, tuner_knob)
+
 			time.sleep(0.2)
 		#end while
 	except (KeyboardInterrupt, RadioCleanup):
@@ -275,10 +280,12 @@ def main(argv):
 		pwr_led_queue.put('quit')
 		dial_led_queue.put('quit')
 		web_svr_queue.put('quit')
-
-		logging.debug("[ Radio ] All cleanup done.")
+#		pwr_led_queue.join()
+#		dial_led_queue.join()
+#		web_svr_queue.join()
 
 		if do_system_shutdown:
+			play_mp3('beep.mp3')
 			os.system(SHUTDOWN_CMD)
 
 		return 0
@@ -287,9 +294,9 @@ def main(argv):
 		"""
 		This is probably because we can't read the music directory?"
 		"""
-		logging.critical("main()> OSError: " + str(e)) 
+		logging.critical("[ main() ] OSError: " + str(e)) 
 	except RuntimeError as e:
-		logging.critical("main()> RuntimeError: " + str(e))
+		logging.critical("[ main() ] RuntimeError: " + str(e))
 
 #End of main()
 

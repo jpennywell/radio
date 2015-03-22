@@ -190,9 +190,58 @@ A GET request handler that returns only the index.html file.
 """
 class CustomHandler(http.server.BaseHTTPRequestHandler):
 	def do_POST(self):
-		self.do_GET()
+		html = ''
 
-	def do_GET(self):
+		form = cgi.FieldStorage(fp=self.rfile,
+					headers=self.headers,
+					environ={'REQUEST_METHOD':'POST', 'CONTENT_TYPE':self.headers['Content-type']})
+		if 'table_is_options' in form.keys():
+			try:
+				for key in form.keys():
+					sql = "UPDATE options SET value=? WHERE option='"+str(key)+"'"
+					db_conn = sqlite3.connect('config.db')
+					with db_conn:
+						cur = db_conn.cursor()
+						cur.execute(sql, (form.getvalue(key),))
+				html += html_panel("Success", "Options saved.", 'panel-success')
+			except sqlite3.OperationalError as e:
+				html += html_panel("DB Error", "Could not save data: " + str(e), 'panel-danger')
+		else:
+			try:
+				if 'do_delete' in form.keys():
+					sql = 'DELETE FROM playlists WHERE id=?'
+					args = [form.getvalue('id'),]
+					db_conn = sqlite3.connect('config.db')
+					with db_conn:
+						cur = db_conn.cursor()
+						cur.execute(sql, args)
+					html += html_panel("Success", "Playlist deleted", 'panel-warning')
+				else:
+					if form.getvalue('id') == 'NEW':
+						sql = 'INSERT INTO playlists (name,url,random,play_function) VALUES (?,?,?,?)'
+						args = [form.getvalue('name'),
+							form.getvalue('url'),
+							form.getvalue('random'),
+							form.getvalue('play_function')]
+					else:
+						sql = 'UPDATE playlists SET name=?, url=?, random=?, play_function=? WHERE id=?'
+						args = [form.getvalue('name'),
+							form.getvalue('url'),
+							form.getvalue('random'),
+							form.getvalue('play_function'),
+							form.getvalue('id')]
+
+					db_conn = sqlite3.connect('config.db')
+					with db_conn:
+						cur = db_conn.cursor()
+						cur.execute(sql, args)
+					html += html_panel("Success", "Playlist saved.", 'panel-success')
+			except sqlite3.OperationalError as e:
+				html += html_panel("DB Error", "Could not save data: " + str(e), 'panel-danger')
+
+		self.do_GET(posted_message = html)
+
+	def do_GET(self, posted_message = False):
 		"""
 		Instead of serving up any requested file, serve up index.html.
 		"""
@@ -200,59 +249,9 @@ class CustomHandler(http.server.BaseHTTPRequestHandler):
 			if self.path == '/config':
 				try:
 					html = HTML_HEADER
-
-					try:
-						form = cgi.FieldStorage(
-									fp=self.rfile,
-									headers=self.headers,
-									environ={'REQUEST_METHOD':'POST',
-											'CONTENT_TYPE':self.headers['Content-type']})
-						if 'table_is_options' in form.keys():
-							try:
-								for key in form.keys():
-									sql = "UPDATE options SET value=? WHERE option='"+str(key)+"'"
-									db_conn = sqlite3.connect('config.db')
-									with db_conn:
-										cur = db_conn.cursor()
-										cur.execute(sql, (form.getvalue(key),))
-								html += html_panel("Success", "Options saved.", 'panel-success')
-							except sqlite3.OperationalError as e:
-								html += html_panel("DB Error", "Could not save data: " + str(e), 'panel-danger')
-						else:
-							try:
-								if 'do_delete' in form.keys():
-									sql = 'DELETE FROM playlists WHERE id=?'
-									args = [form.getvalue('id'),]
-									db_conn = sqlite3.connect('config.db')
-									with db_conn:
-										cur = db_conn.cursor()
-										cur.execute(sql, args)
-									html += html_panel("Success", "Playlist deleted.", 'panel-warning')
-								else:
-									if form.getvalue('id') == 'NEW':
-										sql = 'INSERT INTO playlists (name,url,random,play_function) VALUES (?,?,?,?)'
-										args = [form.getvalue('name'),
-												form.getvalue('url'),
-												form.getvalue('random'),
-												form.getvalue('play_function')]
-									else:
-										sql = 'UPDATE playlists SET name=?, url=?, random=?, play_function=? WHERE id=?'
-										args = [form.getvalue('name'),
-												form.getvalue('url'),
-												form.getvalue('random'),
-												form.getvalue('play_function'),
-												form.getvalue('id')]
-									db_conn = sqlite3.connect('config.db')
-									with db_conn:
-										cur = db_conn.cursor()
-										cur.execute(sql, args)
-									html += html_panel("Success", "Playlist saved.", 'panel-success')
-							except sqlite3.OperationalError as e:
-								html += html_panel("DB Error", "Could not save data: " + str(e), 'panel-danger')
+					if posted_message is not False:
+						html += posted_message
 							
-					except Exception as e:
-						logging.error("[ WWW ] No form data: " + str(e))
-
 					db_conn = sqlite3.connect('config.db')
 
 					with db_conn:

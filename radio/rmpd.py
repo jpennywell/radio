@@ -129,7 +129,7 @@ class StreamManager():
 			Make sure that this stream exists.
 			"""
 			stream = self.streams[stream_id]
-		except KeyError:
+		except IndexError:
 			return False
 
 		"""
@@ -153,7 +153,10 @@ class StreamManager():
 		svr = self.servers[svr_id]
 		svr.ready()
 		svr.clear()
-		svr.load(stream.playlist)
+		try:
+			svr.load(stream.playlist)
+		except mpd.CommandError as e:
+			logging.debug("[ StreamManager ] : Error on load '" + str(stream.playlist) + "', " + str(e))
 
 		self.stream_map_to[stream_id] = svr_id
 		logging.debug("[ StreamManager ] : Putting stream " + str(stream_id) + " on server " + str(svr_id))
