@@ -42,7 +42,7 @@ class DialView:
 								str(Tuner.tuning) + \
 								r_mark)
 			else:
-				fr_list.append('---')
+				fr_list.append(' --- ')
 			fr_list.append(fr)
 		dial_string = ' '.join(str(x) for x in fr_list)
 		debug_string = destr + '[' + dial_string + ' ] '

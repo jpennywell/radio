@@ -188,7 +188,7 @@ This extends PotReader.
 """
 class TunerPotReader(PotReader):
 
-	smooth_fac = 1
+	smooth_fac = 0.8
 
 	"""
 	Gap between stations, measured in pot ticks (0 - 1023)
@@ -223,8 +223,8 @@ class TunerPotReader(PotReader):
 	"""
 	Ignore some bad pot values for station frequencies
 	"""
-	cutoff_bottom = 120
-	cutoff_top = 918
+	cutoff_bottom = 0
+	cutoff_top = 1023
 
 	def __init__(self, pin, num_stations):
 		super(TunerPotReader, self).__init__(pin)
@@ -265,7 +265,7 @@ class TunerPotReader(PotReader):
 		for t in range(0, self.num_stations, 1):
 			fr = self.cutoff_bottom + (0.5 * self.cfg_st_gap + self.cfg_st_radius) + \
 							t * (2 * self.cfg_st_radius + self.cfg_st_gap)
-			self.freq_list.append(fr)
+			self.freq_list.append(int(fr))
 
 
 	def get_closest_freqs(self):

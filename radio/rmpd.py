@@ -23,13 +23,11 @@ class StreamServer(mpd.MPDClient):
 
 	snd_output_id = 0
 
-
 	def __init__(self, host, port):
 		self.rmpd_host = host
 		self.rmpd_port = port
 
 		super(StreamServer, self).__init__()
-
 
 	def ready(self):
 		'''
@@ -89,39 +87,31 @@ the streams, spread across the servers.
 Either streams of servers can be larger.
 """
 class StreamManager():
-	num_servers = 2
-
 	active_server = 0
 	servers = []
 
 	active_stream = 0
 	streams = []
 
-	stream_map_to = {}
+	stream_map = {}
 
 
-	def __init__(self, host, starting_port):
-		for i in range(0, self.num_servers):
-			self.servers.append(StreamServer(host, starting_port + i))
+	def __init__(self, host, starting_port, num_servers):
+		for p in range(0, num_servers):
+			self.servers.append(StreamServer(host, starting_port + p))
+		logging.debug("[ StreamManager ] : Started " + str(self.num_servers) + " servers starting at port " + str(starting_port))
 
 
-	def add_stream(self, name, playlist, random = False, play_func = None):
+	def register_stream(self, name, playlist, random = False, play_func = None):
 		self.streams.append(Stream(name, playlist, random, play_func))
+		logging.debug("[ StreamManager ] : Added stream '" + name + "'")
 
 
-	def del_stream(self, stream_id):
-		try:
-			self.streams.pop(stream_id)
-			return True
-		except IndexError:
-			return False
-
-
-	def load_stream(self, stream_id):
+	def preload_stream(self, stream_id):
 		"""
 		Make sure stream_id is not already assigned.
 		"""
-		if stream_id in self.stream_map_to:
+		if stream_id in self.stream_map:
 			return
 
 		try:
@@ -129,7 +119,8 @@ class StreamManager():
 			Make sure that this stream exists.
 			"""
 			stream = self.streams[stream_id]
-		except IndexError:
+		except IndexError as e:
+			logging.debug("[ StreamManager ] : Error loading stream " + stream_id + ": " + str(e))
 			return False
 
 		"""
@@ -139,8 +130,8 @@ class StreamManager():
 		If there is no inactive server (when self.num_servers == 1), then
 		just load onto that one.
 		"""
-		assigned_svrs = dict((v,k) for k, v in iter(self.stream_map_to.items()))
-		unassigned_svrs = set(range(0, self.num_servers)) - set(assigned_svrs.keys()) - set([self.active_server])
+		assigned_svrs = dict((v,k) for k, v in iter(self.stream_map.items()))
+		unassigned_svrs = set(range(0, self.num_servers)) - set(assigned_svrs.keys())# - set([self.active_server])
 		try:
 			svr_id = list(unassigned_svrs)[0]
 		except IndexError:
@@ -158,12 +149,12 @@ class StreamManager():
 		except mpd.CommandError as e:
 			logging.debug("[ StreamManager ] : Error on load '" + str(stream.playlist) + "', " + str(e))
 
-		self.stream_map_to[stream_id] = svr_id
+		self.stream_map[stream_id] = svr_id
 		logging.debug("[ StreamManager ] : Putting stream " + str(stream_id) + " on server " + str(svr_id))
 
 
 	def switch_stream(self, stream_id):
-		if stream_id not in self.stream_map_to:
+		if stream_id not in self.stream_map:
 			self.load_stream(stream_id)	
 
 		self.stop_stream(self.active_stream)
@@ -173,7 +164,7 @@ class StreamManager():
 
 	def start_stream(self, stream_id):
 		try:
-			svr_id = self.stream_map_to[stream_id]
+			svr_id = self.stream_map[stream_id]
 			logging.debug("[ StreamManager ] : Moving to stream " + str(stream_id) + " (SVR: " + str(svr_id) + ")")
 			svr = self.servers[svr_id]
 			svr.ready()
@@ -192,7 +183,7 @@ class StreamManager():
 
 	def stop_stream(self, stream_id):
 		try:
-			svr_id = self.stream_map_to[stream_id]
+			svr_id = self.stream_map[stream_id]
 			logging.debug("[ StreamManager ] : Moving from stream " + str(stream_id) + " (SVR: " + str(svr_id) + ")")
 			svr = self.servers[svr_id]
 			svr.ready()

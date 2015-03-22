@@ -232,7 +232,6 @@ def main(argv):
 						if st_id_R > len(str_man.streams):
 							st_id_L = station_id - 1
 
-						print("Switching")
 						str_man.switch_stream(tuner_knob.SID)
 
 						(st_L, st_R) = tuner_knob.get_closest_freqs()
