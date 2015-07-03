@@ -123,10 +123,10 @@ def main(argv):
 		logging.debug('[ Radio ] Starting MPD stream manager')
 		str_host = opt_ldr.fetch('MPD_HOST')
 		str_port = opt_ldr.fetch('MPD_PORT')
-		str_man = radio.rmpd.StreamManager(str_host, str_port)
+		str_man = radio.rmpd.StreamManager(str_host, str_port, 2)
 		for st in station_set:
 			(name, playlist, random, play_func) = st[1:]
-			str_man.add_stream(str(name), str(playlist), bool(random), str(play_func))
+			str_man.register_stream(str(name), str(playlist), bool(random), str(play_func))
 
 
 		logging.debug("[ Radio ] Main loop.")
@@ -189,7 +189,10 @@ def main(argv):
 						num_st = len(str_man.streams)
 						d = abs(tuner_knob.tuning - tuner_knob.tuned_to())
 #						vol_adj = round(0.5 * (1 + math.erf(3.64 - 4*d/r)), 2)
-						vol_adj = math.exp((fac * num_st * (g + r) - d**2)/700)
+#						vol_adj = math.exp((fac * num_st * (g + r) - d**2)/700)
+#						vol_adj = vol_adj*(1.0 - 0.5) + 0.5
+#						vol_adj = round(0.5 + (1 + math.erf(r/0.8 - d)))*(1.0 - 0.4) + 0.4
+						vol_adj = 0.5 * (1 + math.erf((r - d)/(0.4*r)))
 					except (ArithmeticError, FloatingPointError, ZeroDivisionError) as e:
 						logging.error("[ Radio ] Math error: " + str(e))
 						vol_adj = 1.0
@@ -200,6 +203,12 @@ def main(argv):
 					vol_adj = 1
 				if vol_adj < 0:
 					vol_adj = 0
+
+				# Linear map [0,1] to [min_vol,1.0]:
+				# (vol_adj - 0)*(1.0-min_vol)/(1-0) + min_vol
+				# vol_adj*(1.0-min_vol) + min_vol
+				#min_vol = 0.4
+				#vol_adj = vol_adj*(1.0 - min_vol) + min_vol
 
 				d_vol = abs(int(vol_knob.volume_cap) - int(vol_adj * vol_knob.volume))
 				if d_vol > 3:
@@ -232,14 +241,13 @@ def main(argv):
 						if st_id_R > len(str_man.streams):
 							st_id_L = station_id - 1
 
-						str_man.switch_stream(tuner_knob.SID)
-
 						(st_L, st_R) = tuner_knob.get_closest_freqs()
 						if st_L == tuner_knob.tuned_to():
-							str_man.load_stream(st_id_R)
+							str_man.preload(st_id_R)
 						elif st_R == tuner_knob.tuned_to():
-							str_man.load_stream(st_id_R)
+							str_man.preload(st_id_R)
 
+						str_man.activate_stream(tuner_knob.SID)
 
 						"""
 						Update the web server
