@@ -188,7 +188,7 @@ This extends PotReader.
 """
 class TunerPotReader(PotReader):
 
-	smooth_fac = 0.8
+	smooth_fac = 1
 
 	"""
 	Gap between stations, measured in pot ticks (0 - 1023)
@@ -383,7 +383,7 @@ class VolumePotReader(PotReader):
 		Updates internal volume variable, and sets volume.
 		"""
 		if (int(round(volume/10.24)) != int(round(self.volume/10.24))):
-			self.volume = volume
+			self.volume = volume + 5
 			self.volumize(self.get_volume())
 			raise PotChange
 
