@@ -341,6 +341,7 @@ class TunerPotReader(PotReader):
 				self.SID = new_station_id
 				raise PotChange(is_new_station = True)
 
+
 		raise PotChange(is_new_station = False)
 
 # End of class TunerKnob

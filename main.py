@@ -15,7 +15,6 @@ Imports
 try:
 	import fcntl, logging, os, sys, time, signal, math, queue, random, socket, sqlite3, struct
 
-
 	import service.led
 	import service.www
 	import service.option_loader
@@ -43,16 +42,16 @@ try:
 	# Reset/truncate the log file
 	with open('main.log', 'w'):
 		pass
-
 	logging.basicConfig(level=getattr(logging, opt_ldr.fetch('LOG_LEVEL')))
 except IOError as e:
 	logging.critical("[ Radio ] Can't open log file for write: " + str(e))
 
 
-
+"""
+Miscellaneous classes and functions
+"""
 class RadioCleanup(Exception):
 	pass
-
 
 def get_ip_address(ifname):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -63,7 +62,6 @@ def get_ip_address(ifname):
                 )[20:24])
 
 
-	
 def main(argv):
 	"""
 	Main loop.
@@ -128,7 +126,6 @@ def main(argv):
 			(name, playlist, random, play_func) = st[1:]
 			str_man.register_stream(str(name), str(playlist), bool(random), str(play_func))
 
-
 		logging.debug("[ Radio ] Main loop.")
 
 		while True:
@@ -177,21 +174,11 @@ def main(argv):
 				"""
 				if tuner_knob.is_tuned():
 					try:
-						"""
-						vol_adj = round(0.5 * (1 + math.erf( \
-							((self.cfg_st_radius/1.1) - \
-							abs(self.tuning-self.tuned_to()) \
-							)/(0.25*self.cfg_st_radius) ) ), 2)
-						"""
 						r = tuner_knob.cfg_st_radius
 						g = tuner_knob.cfg_st_gap
 						fac = opt_ldr.fetch('GAP_FACTOR')
 						num_st = len(str_man.streams)
 						d = abs(tuner_knob.tuning - tuner_knob.tuned_to())
-#						vol_adj = round(0.5 * (1 + math.erf(3.64 - 4*d/r)), 2)
-#						vol_adj = math.exp((fac * num_st * (g + r) - d**2)/700)
-#						vol_adj = vol_adj*(1.0 - 0.5) + 0.5
-#						vol_adj = round(0.5 + (1 + math.erf(r/0.8 - d)))*(1.0 - 0.4) + 0.4
 						vol_adj = 0.5 * (1 + math.erf((r - d)/(0.4*r)))
 					except (ArithmeticError, FloatingPointError, ZeroDivisionError) as e:
 						logging.error("[ Radio ] Math error: " + str(e))
@@ -204,12 +191,6 @@ def main(argv):
 				if vol_adj < 0:
 					vol_adj = 0
 
-				# Linear map [0,1] to [min_vol,1.0]:
-				# (vol_adj - 0)*(1.0-min_vol)/(1-0) + min_vol
-				# vol_adj*(1.0-min_vol) + min_vol
-				#min_vol = 0.4
-				#vol_adj = vol_adj*(1.0 - min_vol) + min_vol
-
 				d_vol = abs(int(vol_knob.volume_cap) - int(vol_adj * vol_knob.volume))
 				if d_vol > 3:
 					vol_knob.volume_cap = vol_adj * vol_knob.volume
@@ -221,6 +202,7 @@ def main(argv):
 				Update the MPD server.
 				"""
 				if pot_notif.is_new_station:
+					print("NEW STATION")
 					try:
 						"""
 						Prepare backup stream.

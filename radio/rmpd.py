@@ -171,7 +171,25 @@ class StreamManager():
 		svr = self.servers[svr_id]
 		svr.ready()
 		svr.enableoutput(svr.output_id())
-		svr.play()
+
+		stream = self.streams[stream_id]
+
+		if stream.random:
+			svr.random(1)
+		else:
+			svr.random(0)
+
+		try:
+			call = getattr(svr, stream.play_func)
+			if callable(call):
+				call()
+			else:
+				svr.play()
+		except IndexError:
+			svr.play()
+		except AttributeError:
+			svr.play()
+
 		self.active_server = svr_id
 		logging.debug("[ StreamManager ] : Moving servers: {old_server} ==> {new_server} with stream {streamid}".format(old_server = old_svr_id, new_server = svr_id, streamid = stream_id))
 
