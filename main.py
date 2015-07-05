@@ -87,11 +87,14 @@ def main(argv):
 
 		dial_led.start()
 		pwr_led.start()
+		dial_led_queue.put('off')
+		pwr_led_queue.put('off')
 
 		logging.debug("[ Radio ] DialLed fade in.")
 		dial_led_queue.put('fade_up')
 
 		logging.debug("[ Radio ] PowerLed flicker on.")
+		pwr_led_queue.put('fade_up')
 		pwr_led_queue.put('flicker')
 
 		if opt_ldr.fetch('SHOW_DIAL'):
@@ -195,14 +198,13 @@ def main(argv):
 				if d_vol > 3:
 					vol_knob.volume_cap = vol_adj * vol_knob.volume
 					vol_knob.volumize(vol_knob.volume_cap)
-					dial_led_queue.put(['adjust_brightness', vol_adj])
+#					dial_led_queue.put(['adjust_brightness', vol_adj])
 
 
 				"""
 				Update the MPD server.
 				"""
 				if pot_notif.is_new_station:
-					print("NEW STATION")
 					try:
 						"""
 						Prepare backup stream.
@@ -214,6 +216,7 @@ def main(argv):
 						then pre-load station before it.
 						"""
 						station_id = tuner_knob.SID
+						str_man.activate_stream(tuner_knob.SID)
 
 						st_id_L = station_id - 1
 						if st_id_L < 0:
@@ -228,8 +231,6 @@ def main(argv):
 							str_man.preload(st_id_R)
 						elif st_R == tuner_knob.tuned_to():
 							str_man.preload(st_id_R)
-
-						str_man.activate_stream(tuner_knob.SID)
 
 						"""
 						Update the web server
