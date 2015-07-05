@@ -87,15 +87,13 @@ def main(argv):
 
 		dial_led.start()
 		pwr_led.start()
-		dial_led_queue.put('off')
-		pwr_led_queue.put('off')
+
+		logging.debug("[ Radio ] PowerLed flicker on.")
+		pwr_led_queue.put('flicker')
 
 		logging.debug("[ Radio ] DialLed fade in.")
 		dial_led_queue.put('fade_up')
-
-		logging.debug("[ Radio ] PowerLed flicker on.")
-		pwr_led_queue.put('fade_up')
-		pwr_led_queue.put('flicker')
+		dial_led_queue.join()
 
 		if opt_ldr.fetch('SHOW_DIAL'):
 			logging.debug('[ Radio ] DialView started.')
