@@ -10,6 +10,12 @@ will shut down the RPi.
 """
 
 """
+Local defines
+"""
+# Time tick for the main loop
+TICK = 0.2
+
+"""
 Imports
 """
 try:
@@ -29,7 +35,7 @@ except RuntimeError as e:
 """
 Ensure run as root.
 """
-if (os.getuid() != 0):
+if (not hasattr(os, 'getuid')) or (os.getuid() != 0):
 	logging.critical("[ Radio ] This process must be run as root. Exiting.")
 	sys.exit(0)
 
@@ -87,15 +93,17 @@ def main(argv):
 
 		dial_led.start()
 		pwr_led.start()
-		dial_led_queue.put('off')
-		pwr_led_queue.put('off')
+
+		logging.debug("[ Radio ] PowerLed flicker on.")
+		pwr_led_queue.put('flicker')
 
 		logging.debug("[ Radio ] DialLed fade in.")
 		dial_led_queue.put('fade_up')
-
-		logging.debug("[ Radio ] PowerLed flicker on.")
-		pwr_led_queue.put('fade_up')
-		pwr_led_queue.put('flicker')
+		# This doesn't work, b/c dial_led is it's own thread.
+		# dial_led_queue.join()
+		while dial_led_queue.empty() == False:
+			time.sleep(TICK)
+		logging.debug('[ Radio ] Fade up done. Continuing.')
 
 		if opt_ldr.fetch('SHOW_DIAL'):
 			logging.debug('[ Radio ] DialView started.')
@@ -259,7 +267,7 @@ def main(argv):
 			if opt_ldr.fetch('SHOW_DIAL'):
 				text_dial.display(vol_knob, tuner_knob)
 
-			time.sleep(0.2)
+			time.sleep(TICK)
 		#end while
 	except (KeyboardInterrupt, RadioCleanup):
 		"""

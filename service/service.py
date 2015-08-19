@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import threading, logging
+import logging, threading, time
 
 class Service(threading.Thread):
 
@@ -33,7 +33,6 @@ class Service(threading.Thread):
 				break
 
 			try:
-#				logging.debug("[ Service ] : Received command '" + str(cmd) + "'")
 				call = getattr(self, cmd)
 				if callable(call):
 					if args is None:
@@ -42,4 +41,6 @@ class Service(threading.Thread):
 						call(args)
 			except AttributeError:
 				pass
+
+			self.queue.task_done()
 			
