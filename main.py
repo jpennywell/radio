@@ -35,7 +35,7 @@ except RuntimeError as e:
 """
 Ensure run as root.
 """
-if (! hasattr(os, 'getuid')) or (os.getuid() != 0):
+if (not hasattr(os, 'getuid')) or (os.getuid() != 0):
 	logging.critical("[ Radio ] This process must be run as root. Exiting.")
 	sys.exit(0)
 
