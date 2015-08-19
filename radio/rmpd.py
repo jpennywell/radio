@@ -21,15 +21,15 @@ class StreamServer(mpd.MPDClient):
 	rmpd_host = ''
 	rmpd_port = 0
 
-	snd_output_id = 0
-
-
 	def __init__(self, host, port):
 		self.rmpd_host = host
 		self.rmpd_port = port
 
 		super(StreamServer, self).__init__()
 
+	def output_id(self):
+		self.ready()
+		return self.outputs()[0]['outputid']
 
 	def ready(self):
 		'''
@@ -89,115 +89,109 @@ the streams, spread across the servers.
 Either streams of servers can be larger.
 """
 class StreamManager():
-	num_servers = 2
-
-	active_server = 0
 	servers = []
+	active_server = 0
 
-	active_stream = 0
 	streams = []
+	stream_map = {}
 
-	stream_map_to = {}
+	def __init__(self, host, starting_port, num_servers):
+		for p in range(0, num_servers):
+			self.servers.append(StreamServer(host, starting_port + p))
 
-
-	def __init__(self, host, starting_port):
-		for i in range(0, self.num_servers):
-			self.servers.append(StreamServer(host, starting_port + i))
-
-
-	def add_stream(self, name, playlist, random = False, play_func = None):
+	def register_stream(self, name, playlist, random = False, play_func = None):
 		self.streams.append(Stream(name, playlist, random, play_func))
 
+	def find_server(self):
+		# Priority: unassigned server, then inactive, then active
+		assigned_svrs = dict((v,k) for k,v in iter(self.stream_map.items()))
+		unassigned_svrs = set(range(0, len(self.servers))) - set(assigned_svrs.keys())
+		inactive_svrs = set(range(0, len(self.servers))) - set([self.active_server])
 
-	def del_stream(self, stream_id):
-		try:
-			self.streams.pop(stream_id)
-			return True
-		except IndexError:
-			return False
+		if len(unassigned_svrs) > 0:
+			svr_id = list(unassigned_svrs)[0]
+			logging.debug("[ StreamManager ] : Found an UNASSIGNED server (#" + str(svr_id) + ")")
+		elif len(inactive_svrs) > 0:
+			svr_id = list(inactive_svrs)[0]
+			logging.debug("[ StreamManager ] : Found an INACTIVE server (#" + str(svr_id) + ")")
+		else:
+			svr_id = self.active_server
+			logging.debug("[ StreamManager ] : Found an IN-USE server (#" + str(svr_id) + ")")
+
+		return svr_id
 
 
-	def load_stream(self, stream_id):
-		"""
-		Make sure stream_id is not already assigned.
-		"""
-		if stream_id in self.stream_map_to:
+	def preload(self, stream_id):
+		if stream_id in self.stream_map:
+			logging.debug("[ StreamManager ] : Stream " + str(stream_id) + " already loaded on server " + str(self.stream_map[stream_id]))
 			return
 
 		try:
-			"""
-			Make sure that this stream exists.
-			"""
 			stream = self.streams[stream_id]
-		except KeyError:
+		except IndexError:
+			logging.debug("[ StreamManager ] : Stream " + str(stream_id) + " does not exist.")
 			return False
 
-		"""
-		Find an empty server, or at least the inactive one.
-		Reverse the stream map to find assigned servers.
-		If there are no servers unassigned, find an inactive one.
-		If there is no inactive server (when self.num_servers == 1), then
-		just load onto that one.
-		"""
-		assigned_svrs = dict((v,k) for k, v in iter(self.stream_map_to.items()))
-		unassigned_svrs = set(range(0, self.num_servers)) - set(assigned_svrs.keys()) - set([self.active_server])
+		svr_id = self.find_server()
+		# Unassign this server
 		try:
-			svr_id = list(unassigned_svrs)[0]
-		except IndexError:
-			inactive_svrs = set(range(0, self.num_servers)) - set([self.active_server])
-			try:
-				svr_id = list(inactive_svrs)[0]
-			except IndexError:
-				svr_id = 0
+			assigned_servers = dict((svr_id,stream_id) for stream_id,svr_id in self.stream_map.items())
+			old_stream_id = assigned_servers[svr_id]
+			self.stream_map.pop(old_stream_id)
+		except (KeyError, IndexError):
+			pass
+
+		self.stream_map[stream_id] = svr_id
+
+		svr = self.servers[svr_id]
+		stream = self.streams[stream_id]
+		svr.ready()
+		svr.clear()
+		try:
+			svr.load(stream.playlist)
+			logging.debug("[ StreamManager ] : Putting stream {streamid} on {server}".format(streamid = stream_id, server = svr_id))
+		except mpd.CommandError:
+			logging.debug("[ StreamManager ] : Could not load playlist '" + str(stream.playlist) + "'")
+
+
+	def activate_stream(self, stream_id):
+		if stream_id not in self.stream_map:
+			self.preload(stream_id)
+
+		svr_id = self.stream_map[stream_id]
+#		if svr_id == self.active_server:
+#			return
+
+		old_svr_id = self.active_server
+		old_svr = self.servers[old_svr_id]
+		old_svr.ready()
+		old_svr.pause()
+		old_svr.disableoutput(old_svr.output_id())
 
 		svr = self.servers[svr_id]
 		svr.ready()
-		svr.clear()
-		svr.load(stream.playlist)
+		svr.enableoutput(svr.output_id())
 
-		self.stream_map_to[stream_id] = svr_id
-		logging.debug("[ StreamManager ] : Putting stream " + str(stream_id) + " on server " + str(svr_id))
+		stream = self.streams[stream_id]
 
+		if stream.random:
+			svr.random(1)
+		else:
+			svr.random(0)
 
-	def switch_stream(self, stream_id):
-		if stream_id not in self.stream_map_to:
-			self.load_stream(stream_id)	
-
-		self.stop_stream(self.active_stream)
-		self.start_stream(stream_id)
-		self.active_stream = stream_id
-
-
-	def start_stream(self, stream_id):
 		try:
-			svr_id = self.stream_map_to[stream_id]
-			logging.debug("[ StreamManager ] : Moving to stream " + str(stream_id) + " (SVR: " + str(svr_id) + ")")
-			svr = self.servers[svr_id]
-			svr.ready()
-			svr.enableoutput(svr.snd_output_id)
-			try:
-				play_func = getattr(svr, str(self.streams[stream_id].play_func))
-				svr.play_func()
-			except (AttributeError, TypeError):
+			call = getattr(svr, stream.play_func)
+			if callable(call):
+				call()
+			else:
 				svr.play()
-			self.active_server = svr_id
-		except (KeyError, IndexError):
-			return False
-		except mpd.CommandError:
-			return False
+		except IndexError:
+			svr.play()
+		except AttributeError:
+			svr.play()
 
-
-	def stop_stream(self, stream_id):
-		try:
-			svr_id = self.stream_map_to[stream_id]
-			logging.debug("[ StreamManager ] : Moving from stream " + str(stream_id) + " (SVR: " + str(svr_id) + ")")
-			svr = self.servers[svr_id]
-			svr.ready()
-			svr.disableoutput(svr.snd_output_id)
-		except (KeyError, IndexError):
-			return False
-		except mpd.CommandError:
-			return False
+		self.active_server = svr_id
+		logging.debug("[ StreamManager ] : Moving servers: {old_server} ==> {new_server} with stream {streamid}".format(old_server = old_svr_id, new_server = svr_id, streamid = stream_id))
 
 
 	def query_server(self, cmd):
@@ -208,4 +202,5 @@ class StreamManager():
 		except (AttributeError, TypeError):
 			return False
 
-# End of class StreamManager
+#End of class StreamManager
+

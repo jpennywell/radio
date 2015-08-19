@@ -1,0 +1,6 @@
+Cleanup Led service thread stuffs
+Move config_defaults.py to config.db as a column
+Improve pot debounce
+Fix web handling of bool config settings
+Make pot-reading into thread services that notify events
+Improve volume taper for tuning distance
